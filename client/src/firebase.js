@@ -3,6 +3,7 @@ import { getMessaging, getToken } from "firebase/messaging";
 
 class FirebaseService {
   constructor() {
+    ////should change this config
     this.firebaseConfig = {
       apiKey: "AIzaSyD7T4FKDtgJOH5dVsd1DfUk5mqZpyfIp6U",
       authDomain: "servo-e8fdf.firebaseapp.com",
