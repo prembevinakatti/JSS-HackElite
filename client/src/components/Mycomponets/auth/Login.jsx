@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '../../ui/card';
 import { Separator } from "@/components/ui/separator";
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button'; // Import your button component
 import axiosInstance from '@/utils/Axiosinstance';
 import { useNavigate } from 'react-router-dom';
+import { setAuthUser } from '@/redux/authslice';
 function Login() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
   const [loading, setLoading] = useState(false);
@@ -15,8 +16,17 @@ function Login() {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const response = await axiosInstance.post("/auth/handlelogin", data);
+      const response = await axiosInstance.post("/user/loginAccount", data);
       toast.success('Login successful');
+      const userdata=response.data.data
+      console.log(userdata)
+      setAuthUser(userdata)
+      if(userdata.metamaskId==null){
+        navigate("/connectmetamask")
+      }else{
+        navigate(`${userdata.role}/home`)
+      }
+
     } catch (error) {
       toast.error('Login failed. Please try again.');
       console.error('Error:', error);
