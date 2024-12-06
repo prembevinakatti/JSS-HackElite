@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Button } from '../../ui/button';
-import ModeTogle from './ModeTogle';
-import { useDispatch, useSelector } from 'react-redux';
-import { IoMenu } from 'react-icons/io5';
+import React, { useState } from "react";
+import { Button } from "../../ui/button";
+import ModeTogle from "./ModeTogle";
+import { useDispatch, useSelector } from "react-redux";
+import { IoMenu } from "react-icons/io5";
 import {
   Sheet,
   SheetContent,
@@ -10,16 +10,16 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from '@/components/ui/sheet';
-import { Separator } from '@/components/ui/separator';
-import { useNavigate } from 'react-router-dom';
+} from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
-} from '@/components/ui/popover'; // Importing Popover component
-import { setAuthUser } from '@/redux/authslice';
-import axiosInstance from '@/utils/Axiosinstance';
+} from "@/components/ui/popover"; // Importing Popover component
+import { setAuthUser } from "@/redux/authslice";
+import axiosInstance from "@/utils/Axiosinstance";
 import { RiAdminLine } from "react-icons/ri";
 import { FaUserCheck } from "react-icons/fa";
 function Navbar() {
@@ -31,7 +31,7 @@ function Navbar() {
   const navigate = useNavigate();
   const handleLogout = () => {
     dispatch(setAuthUser(null));
-    axiosInstance.post("")
+    axiosInstance.post("");
   };
   const handleNavigation = (path) => {
     navigate(path);
@@ -45,8 +45,8 @@ function Navbar() {
     setIsOpen(true);
   };
   return (
-    <nav className="w-full shadow-md">
-      <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+    <nav className="w-screen shadow-md">
+      <div className="w-full flex items-center px-4 py-3 mx-auto justify-between">
         {/* Menu Trigger with Popover */}
         <Popover open={showPopover} onOpenChange={setShowPopover}>
           <PopoverTrigger asChild>
@@ -74,30 +74,30 @@ function Navbar() {
                   <Separator className="my-3" />
                   <div
                     className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
-                    onClick={() => handleNavigation('/')}
+                    onClick={() => handleNavigation("/")}
                   >
                     Home
                   </div>
                   <Separator className="my-3" />
                   <div
                     className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
-                    onClick={() => handleNavigation('/registerissue')}
+                    onClick={() => handleNavigation("/registerissue")}
                   >
                     register a issu
                   </div>
                   <Separator className="my-3" />
                   <div
                     className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
-                    onClick={() => handleNavigation('/createuser')}
+                    onClick={() => handleNavigation("/createuser")}
                   >
                     create accounts
                   </div>
                   <Separator className="my-3" />
                   <div
                     className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
-                    onClick={() => handleNavigation('/connectmetamask')}
+                    onClick={() => handleNavigation("/connectmetamask")}
                   >
-                   test
+                    test
                   </div>
                   <Separator className="my-3" />
                   {isLogined && (
@@ -122,22 +122,27 @@ function Navbar() {
         {/* Auth Buttons */}
         <div className="flex space-x-2 items-center">
           <ModeTogle />
-           
+
           {isLogined ? (
             <div>
-            <Button variant="destructive" onClick={handleLogout}>
-              Logout
-            </Button>
-            <div>
+              <Button variant="destructive" onClick={handleLogout}>
+                Logout
+              </Button>
+              <div>
                 {isLogined?.role}
-                {isLogined?.role=="Head"?<RiAdminLine />:<FaUserCheck />}
-
+                {isLogined?.role == "Head" ? <RiAdminLine /> : <FaUserCheck />}
+              </div>
             </div>
-            </div>
-
           ) : (
             <>
-              <Button variant="outline" onClick={()=>{navigate("/login")}}>Login</Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigate("/login");
+                }}
+              >
+                Login
+              </Button>
             </>
           )}
         </div>

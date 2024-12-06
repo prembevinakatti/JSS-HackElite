@@ -7,18 +7,16 @@ require("dotenv").config();
 
 const app = express();
 
-// CORS configuration
-const corsOptions = {
-  origin: "http://localhost:5173", // Adjust this to the correct frontend URL
-  methods: "GET,POST,PUT,DELETE,OPTIONS", // Add all allowed HTTP methods
-  allowedHeaders: "Content-Type,Authorization", // Specify allowed headers
-  credentials: true, // If you're using cookies or credentials
-};
-
-app.use(cors(corsOptions)); // Apply CORS configuration globally
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+const corsOptions = {
+  origin: "http://localhost:5173", // Adjust this to the correct frontend URL
+  methods: "GET,POST,PUT,DELETE,OPTIONS", // Add all allowed HTTP methods
+  credentials: true, // If you're using cookies or credentials
+};
+app.use(cors(corsOptions));
 
 app.use("/api/user", userRoute); // Your API routes
 

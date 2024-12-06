@@ -7,7 +7,12 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // 
 const MetaMaskConnect = () => {
   const [account, setAccount] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
-  const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(!!window.ethereum);
+  const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(
+    !!window.ethereum
+  );
+
+  console.log(account);
+  
 
   const connectMetaMask = async () => {
     if (window.ethereum) {
@@ -21,7 +26,9 @@ const MetaMaskConnect = () => {
         setErrorMessage("Connection failed. Please try again.");
       }
     } else {
-      setErrorMessage("MetaMask is not installed. Please install it to continue.");
+      setErrorMessage(
+        "MetaMask is not installed. Please install it to continue."
+      );
     }
   };
 
@@ -39,7 +46,8 @@ const MetaMaskConnect = () => {
             <Alert className="mb-4" variant="warning">
               <AlertTitle>MetaMask Not Detected</AlertTitle>
               <AlertDescription>
-                MetaMask is not installed on your browser. Please install MetaMask to proceed.
+                MetaMask is not installed on your browser. Please install
+                MetaMask to proceed.
                 <br />
                 <a
                   href="https://metamask.io/download/"
