@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import axiosInstance from "@/utils/Axiosinstance";
 import { useNavigate } from "react-router-dom";
 import { setAuthUser } from "@/redux/authslice";
+import { useDispatch } from "react-redux";
 function Login() {
   const {
     register,
@@ -24,6 +25,7 @@ function Login() {
   } = useForm();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -35,7 +37,7 @@ function Login() {
       toast.success("Login successful");
       const userdata = response.data.user;
       console.log(userdata);
-      setAuthUser(userdata);
+      dispatch(setAuthUser(userdata));
       if (userdata.metamaskId == null) {
         navigate("/connectmetamask");
       } else {

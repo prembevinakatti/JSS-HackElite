@@ -16,10 +16,12 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  department: {
-    type: String,
-    required: true,
-  },
+  department: [
+    {
+      type: String,
+      required: true,
+    },
+  ],
   password: {
     type: String,
     required: true,
@@ -32,6 +34,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     enum: ["Head", "Admin", "Staff"],
+  },
+  userId: {
+    type: String,
+    unique: true,
+  },
+  phoneNumber: {
+    type: String,
+    required: true,
+    unique: true,
   },
 });
 

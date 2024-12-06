@@ -3,6 +3,7 @@ import { FaEthereum } from "react-icons/fa";
 import { Button } from "@/components/ui/button"; // ShadCN Button
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // ShadCN Card
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // ShadCN Alert
+import axios from "axios";
 
 const MetaMaskConnect = () => {
   const [account, setAccount] = useState(null);
@@ -11,18 +12,36 @@ const MetaMaskConnect = () => {
     !!window.ethereum
   );
 
-  console.log(account);
-  
-
   const connectMetaMask = async () => {
     if (window.ethereum) {
       try {
         const accounts = await window.ethereum.request({
           method: "eth_requestAccounts",
         });
-        setAccount(accounts[0]);
+        const connectedAccount = accounts[0];
+        setAccount(connectedAccount);
         setErrorMessage("");
+
+        if (connectedAccount) {
+          // Send the Metamask ID only if it exists
+          const response = await axios.post(
+            `http://localhost:3000/api/user/setMetamaskId`,
+            { metamaskId: connectedAccount },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+              withCredentials: true,
+            }
+          );
+          if (response.data.success) {
+            console.log(response.data);
+          }
+        } else {
+          setErrorMessage("Failed to retrieve account information.");
+        }
       } catch (error) {
+        console.log(error);
         setErrorMessage("Connection failed. Please try again.");
       }
     } else {
