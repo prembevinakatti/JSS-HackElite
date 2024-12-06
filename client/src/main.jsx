@@ -15,6 +15,7 @@ import { store } from './redux/store';
 import Login from './components/Mycomponets/auth/Login';
 import MetaMaskConnect from './components/Mycomponets/metamask/MetaMaskConnect';
 import CreateForm from './components/Mycomponets/forms/CreateForm';
+import FileUpload from './components/Mycomponets/forms/FileUpload';
 const router=createBrowserRouter(createRoutesFromElements(
   <>
     <Route path='/' element={<App/>}>
@@ -23,6 +24,7 @@ const router=createBrowserRouter(createRoutesFromElements(
 
         {/* restricted usrsroute */}
         <Route path='/createuser' element={<CreateForm/>}/>
+        <Route path='/uploadfiles' element={<FileUpload/>}/>
     </Route>
   </>
 ))
