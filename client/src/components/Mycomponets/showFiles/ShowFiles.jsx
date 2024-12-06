@@ -30,15 +30,11 @@ const buildTree = (data) => {
   data.forEach(({ path, fileName, url }) => {
     let current = tree;
     path.forEach((folder, index) => {
-      // Check if current[folder] exists
       if (!current[folder]) {
-        // Create an object if it's a folder, or an array if it's the last level
         current[folder] = index === path.length - 1 ? [] : {};
       }
-      current = current[folder]; // Move deeper into the structure
+      current = current[folder];
     });
-
-    // At the final level, add the file
     if (Array.isArray(current)) {
       current.push({ fileName, url });
     }
@@ -49,21 +45,20 @@ const buildTree = (data) => {
 const ShowFiles = () => {
   const fileTree = buildTree(fileData);
   const [currentFolder, setCurrentFolder] = useState(fileTree);
-  const [path, setPath] = useState([]); // To track the current navigation path
+  const [path, setPath] = useState([]);
 
-  // Handle folder click
+  // Open folder
   const openFolder = (folderName) => {
     setPath([...path, folderName]);
     setCurrentFolder(currentFolder[folderName]);
   };
 
-  // Handle going back to the previous folder
+  // Go back to previous folder
   const goBack = () => {
     const newPath = [...path];
     newPath.pop();
     setPath(newPath);
 
-    // Navigate to the parent folder
     let newFolder = fileTree;
     newPath.forEach((folder) => {
       newFolder = newFolder[folder];
@@ -72,46 +67,59 @@ const ShowFiles = () => {
   };
 
   return (
-    <div>
-      <h1>File Explorer</h1>
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
+        <h1 className="text-2xl font-semibold text-gray-700 mb-4">File Explorer</h1>
 
-      {/* Display Current Path */}
-      <div style={{ marginBottom: "10px" }}>
-        <strong>Current Path:</strong>{" "}
-        {path.length > 0 ? path.join(" > ") : "Root"}
-      </div>
+        {/* Display Current Path */}
+        <div className="text-gray-500 mb-6">
+          <span className="font-semibold">Current Path:</span>{" "}
+          {path.length > 0 ? path.join(" / ") : "Root"}
+        </div>
 
-      {/* Back Button */}
-      {path.length > 0 && (
-        <button onClick={goBack} style={{ marginBottom: "10px" }}>
-          Go Back
-        </button>
-      )}
-
-      {/* Display Folders and Files */}
-      <ul>
-        {Object.keys(currentFolder).map((key) =>
-          Array.isArray(currentFolder[key]) ? (
-            // Display files
-            currentFolder[key].map((file) => (
-              <li key={file.fileName}>
-                <a href={file.url} target="_blank" rel="noopener noreferrer">
-                  {file.fileName}
-                </a>
-              </li>
-            ))
-          ) : (
-            // Display folders
-            <li
-              key={key}
-              onClick={() => openFolder(key)}
-              style={{ cursor: "pointer", color: "blue" }}
-            >
-              📁 {key}
-            </li>
-          )
+        {/* Back Button */}
+        {path.length > 0 && (
+          <button
+            onClick={goBack}
+            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition"
+          >
+            Go Back
+          </button>
         )}
-      </ul>
+
+        {/* Folder and File List */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Object.keys(currentFolder).map((key) =>
+            Array.isArray(currentFolder[key]) ? (
+              // Display files
+              currentFolder[key].map((file) => (
+                <div
+                  key={file.fileName}
+                  className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
+                >
+                  <a
+                    href={file.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-500 font-medium truncate"
+                  >
+                    📄 {file.fileName}
+                  </a>
+                </div>
+              ))
+            ) : (
+              // Display folders
+              <div
+                key={key}
+                onClick={() => openFolder(key)}
+                className="cursor-pointer bg-gray-50 border border-gray-200 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
+              >
+                <span className="text-gray-700 font-medium">📁 {key}</span>
+              </div>
+            )
+          )}
+        </div>
+      </div>
     </div>
   );
 };

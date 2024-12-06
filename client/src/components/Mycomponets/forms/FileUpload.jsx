@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import { AiOutlineFilePdf, AiOutlineCloudUpload } from "react-icons/ai";
 import { FaFileImage } from "react-icons/fa";
-import {
-  Card,
-  CardHeader,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -26,8 +22,10 @@ const FileUpload = () => {
   const [storagePath, setStoragePath] = useState("");
   const [branch, setBranch] = useState("");
   const [department, setDepartment] = useState("");
+  const [folderStructure, setFolderStructure] = useState({});
   const [fileMode, setFileMode] = useState("create");
   const [folderName, setFolderName] = useState("");
+  const [existingFolderPath, setExistingFolderPath] = useState("");
 
   const categories = {
     Administrative: [
@@ -96,24 +94,66 @@ const FileUpload = () => {
     setBulkFiles(Array.from(e.target.files));
   };
 
+  const updateStoragePath = () => {
+    if (fileMode === "create") {
+      const path = `${branch}/${department}${
+        folderName ? `/${folderName}` : ""
+      }`;
+      setStoragePath(path);
+    } else if (fileMode === "update") {
+      setStoragePath(existingFolderPath);
+    }
+  };
+
   const handleUpload = () => {
     if (!storagePath) {
       alert("Please specify a storage path.");
       return;
     }
 
-    if (uploadMode === "single" && singleFile) {
-      console.log("Uploading Single File:", singleFile);
-    } else if (uploadMode === "bulk" && bulkFiles.length) {
-      console.log("Uploading Bulk Files:", bulkFiles);
+    if (fileMode === "create") {
+      const pathSegments = storagePath.split("/");
+      let current = folderStructure;
+
+      pathSegments.forEach((segment, index) => {
+        if (!current[segment]) {
+          current[segment] = index === pathSegments.length - 1 ? [] : {};
+        }
+        current = current[segment];
+      });
+
+      if (uploadMode === "single" && singleFile) {
+        current.push(singleFile.name);
+      } else if (uploadMode === "bulk" && bulkFiles.length) {
+        bulkFiles.forEach((file) => current.push(file.name));
+      }
+
+      alert(`Folder and files added successfully to: ${storagePath}`);
+    } else if (fileMode === "update") {
+      const pathSegments = existingFolderPath.split("/");
+      let current = folderStructure;
+
+      pathSegments.forEach((segment) => {
+        if (current[segment]) {
+          current = current[segment];
+        } else {
+          alert("Invalid folder path!");
+          return;
+        }
+      });
+
+      if (uploadMode === "single" && singleFile) {
+        current.push(singleFile.name);
+      } else if (uploadMode === "bulk" && bulkFiles.length) {
+        bulkFiles.forEach((file) => current.push(file.name));
+      }
+
+      alert(`Files uploaded successfully to: ${existingFolderPath}`);
     }
 
-    alert(`Files uploaded to: ${storagePath}`);
-  };
-
-  const updateStoragePath = () => {
-    const path = `${branch}/${department}${folderName ? `/${folderName}` : ""}`;
-    setStoragePath(path);
+    console.log("Updated Folder Structure:", folderStructure);
+    setSingleFile(null);
+    setBulkFiles([]);
   };
 
   return (
@@ -141,6 +181,7 @@ const FileUpload = () => {
             setBranch(value);
             setDepartment("");
             setFolderName("");
+            setExistingFolderPath("");
             setStoragePath("");
           }}
         >
@@ -192,16 +233,14 @@ const FileUpload = () => {
           <Button
             variant={fileMode === "create" ? "secondary" : "primary"}
             onClick={() => setFileMode("create")}
-            disabled={!department}
           >
             Create Folder
           </Button>
           <Button
             variant={fileMode === "update" ? "secondary" : "primary"}
             onClick={() => setFileMode("update")}
-            disabled={!department}
           >
-            Upload to Existing Folder
+            Add to Existing Folder
           </Button>
         </div>
 
@@ -216,18 +255,21 @@ const FileUpload = () => {
                 updateStoragePath();
               }}
               placeholder="Enter folder name"
-              disabled={!department}
             />
           </div>
         )}
 
         {fileMode === "update" && (
           <div>
-            <Label>Enter Folder Path</Label>
+            <Label>Enter Existing Folder Path</Label>
             <Input
               type="text"
+              value={existingFolderPath}
+              onChange={(e) => {
+                setExistingFolderPath(e.target.value);
+                updateStoragePath();
+              }}
               placeholder="Enter folder path"
-              disabled={!department}
             />
           </div>
         )}
@@ -240,14 +282,12 @@ const FileUpload = () => {
         <Button
           variant={uploadMode === "single" ? "secondary" : "primary"}
           onClick={() => setUploadMode("single")}
-          disabled={!department}
         >
           Single Upload
         </Button>
         <Button
           variant={uploadMode === "bulk" ? "secondary" : "primary"}
           onClick={() => setUploadMode("bulk")}
-          disabled={!department}
         >
           Bulk Upload
         </Button>
@@ -304,13 +344,13 @@ const FileUpload = () => {
             {bulkFiles.length > 0 && (
               <div className="mt-2">
                 <h3 className="text-sm font-medium">Selected Files:</h3>
-                <ul className="list-disc list-inside">
+                <ul>
                   {bulkFiles.map((file, index) => (
                     <li key={index} className="flex items-center gap-2">
                       {file.type.includes("pdf") ? (
-                        <AiOutlineFilePdf size={20} />
+                        <AiOutlineFilePdf size={25} />
                       ) : (
-                        <FaFileImage size={20} />
+                        <FaFileImage size={25} />
                       )}
                       <span>{file.name}</span>
                     </li>
@@ -322,11 +362,9 @@ const FileUpload = () => {
         </Card>
       )}
 
-      <Button
-        className="mt-6 w-full"
-        onClick={handleUpload}
-        disabled={!storagePath || (uploadMode === "single" && !singleFile) || (uploadMode === "bulk" && bulkFiles.length === 0)}
-      >
+      <Separator className="my-4" />
+
+      <Button variant="secondary" className="w-full" onClick={handleUpload}>
         Upload Files
       </Button>
     </div>
