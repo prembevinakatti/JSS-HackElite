@@ -1,9 +1,54 @@
-import React from 'react'
+import React, { createContext, useContext, useEffect, useState } from "react";
+import { ethers } from "ethers";
+import abi from "../ContractABI/DocumentManagementSystem.json";
 
-const ContractContext = () => {
+const ContractContext = createContext();
+
+export const ContractProvider = ({ children }) => {
+  const [walletAddress, setWalletAddress] = useState(null);
+  const [state, setState] = useState({
+    provider: null,
+    signer: null,
+    contract: null,
+  });
+
+  const contractAddress = "0x65576A9dc428fF578e8af63A9e03b13907559251";
+  const contractABI = abi.abi;
+  
+
+  useEffect(() => {
+    const getWalletAddress = async () => {
+      if (window.ethereum) {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const accounts = await provider.listAccounts();
+        if (accounts.length > 0) {
+          setWalletAddress(accounts[0]);
+          const signer = await provider.getSigner();
+          const contract = new ethers.Contract(
+            contractAddress,
+            contractABI,
+            signer
+          );
+          setState({ provider, signer, contract });
+          console.log("Contract initialized:", contract); // Check if contract is initialized
+        } else {
+          console.log("No accounts found! Please connect your wallet.");
+        }
+      } else {
+        console.log("MetaMask not detected!");
+      }
+    };
+
+    getWalletAddress();
+  }, []);
+
   return (
-    <div>ContractContext</div>
-  )
-}
+    <ContractContext.Provider value={{ walletAddress, state }}>
+      {children}
+    </ContractContext.Provider>
+  );
+};
 
-export default ContractContext
+export const useContract = () => {
+  return useContext(ContractContext);
+};

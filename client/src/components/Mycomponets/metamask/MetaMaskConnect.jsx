@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEthereum } from "react-icons/fa";
 import { Button } from "@/components/ui/button"; // ShadCN Button
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // ShadCN Card
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"; // ShadCN Alert
 import axios from "axios";
+import { useContract } from "@/ContractContext/ContractContext";
 
 const MetaMaskConnect = () => {
   const [account, setAccount] = useState(null);
@@ -11,6 +12,7 @@ const MetaMaskConnect = () => {
   const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(
     !!window.ethereum
   );
+  const { contract, loading } = useContract(); // Access contract and loading state from context
 
   const connectMetaMask = async () => {
     if (window.ethereum) {
@@ -51,8 +53,15 @@ const MetaMaskConnect = () => {
     }
   };
 
+  useEffect(() => {
+    if (contract && account) {
+      // You can now interact with the contract
+      console.log("Contract and account are ready", contract, account);
+    }
+  }, [contract, account]); // This will trigger when either contract or account changes
+
   return (
-    <div className="flex justify-center items-center h-screen ">
+    <div className="flex justify-center items-center h-screen">
       <Card className="w-[400px] shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg font-semibold">

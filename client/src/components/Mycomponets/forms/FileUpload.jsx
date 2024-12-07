@@ -1,10 +1,7 @@
 import React, { useState } from "react";
-import { AiOutlineFilePdf, AiOutlineCloudUpload } from "react-icons/ai";
-import { FaFileImage } from "react-icons/fa";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,175 +11,146 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import axios from "axios"; // Using axios to interact with Pinata API
+import { useContract } from "@/ContractContext/ContractContext";
 
-const FileUpload = () => {
-  const [uploadMode, setUploadMode] = useState("single"); // 'single' or 'bulk'
-  const [singleFile, setSingleFile] = useState(null);
-  const [bulkFiles, setBulkFiles] = useState([]);
-  const [storagePath, setStoragePath] = useState("");
+const FileUpload = ({ onUploadComplete }) => {
+  const [fileName, setFileName] = useState("");
+  const [folderName, setFolderName] = useState("");
   const [branch, setBranch] = useState("");
   const [department, setDepartment] = useState("");
-  const [folderStructure, setFolderStructure] = useState({});
-  const [fileMode, setFileMode] = useState("create");
-  const [folderName, setFolderName] = useState("");
-  const [existingFolderPath, setExistingFolderPath] = useState("");
+  const [isPrivate, setIsPrivate] = useState(true); // Changed to isPrivate
+  const [path, setPath] = useState("");
+  const [file, setFile] = useState(null);
+  const [ipfsHash, setIpfsHash] = useState("");
+  const [loading, setLoading] = useState(false); // Loading state
 
-  const categories = {
-    Administrative: [
-      "Institutional Policies",
-      "Employment Records",
-      "Salary Records",
-      "Annual Reports",
-      "Government Correspondence",
-    ],
-    CSE: [
-      "Curriculum_Syllabus",
-      "Faculty_Records",
-      "Course_Materials",
-      "Lab_Records",
-      "Student_Records",
-      "Research_Projects",
-      "Exam_Results",
-    ],
-    ECE: [
-      "Curriculum_Syllabus",
-      "Faculty_Records",
-      "Course_Materials",
-      "Lab_Records",
-      "Student_Records",
-      "Research_Projects",
-      "Exam_Results",
-    ],
-    ME: [
-      "Curriculum_Syllabus",
-      "Faculty_Records",
-      "Course_Materials",
-      "Lab_Records",
-      "Student_Records",
-      "Research_Projects",
-      "Exam_Results",
-    ],
-    CE: [
-      "Curriculum_Syllabus",
-      "Faculty_Records",
-      "Course_Materials",
-      "Lab_Records",
-      "Student_Records",
-      "Research_Projects",
-      "Exam_Results",
-    ],
-    Fees_Finance: [
-      "Fee_Structure",
-      "Fee_Collection_Records",
-      "Financial_Reports",
-      "Scholarship_Records",
-    ],
-    Hostel: ["Allotment_Records", "Maintenance_Logs", "Fee_Records"],
-    IT_Systems: [
-      "Software_Licenses",
-      "Network_Configuration",
-      "Security_Reports",
-    ],
-    Events: ["Event_Approvals", "Cultural_Activities"],
-  };
+  const { state } = useContract();
+  const contract = state.contract;
+  console.log("contract", contract);
 
-  const handleSingleFileChange = (e) => {
-    setSingleFile(e.target.files[0]);
-  };
+  // Pinata API endpoint and authentication
+  const pinataApiUrl = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+  const pinataApiKey = import.meta.env.VITE_PINATA_API_KEY; // Store your Pinata API key in .env
+  const pinataSecretApiKey = import.meta.env.VITE_PINATA_SECRET_API_KEY; // Store the secret API key in .env
 
-  const handleBulkFilesChange = (e) => {
-    setBulkFiles(Array.from(e.target.files));
-  };
-
-  const updateStoragePath = () => {
-    if (fileMode === "create") {
-      const path = `${branch}/${department}${
-        folderName ? `/${folderName}` : ""
-      }`;
-      setStoragePath(path);
-    } else if (fileMode === "update") {
-      setStoragePath(existingFolderPath);
+  // Update path based on branch and department
+  const updatePath = () => {
+    if (branch && department) {
+      return `${branch}/${department}`;
     }
+    return "";
   };
 
-  const handleUpload = () => {
-    if (!storagePath) {
-      alert("Please specify a storage path.");
+  const handleFileChange = (e) => {
+    setFile(e.target.files[0]);
+  };
+
+  const handleUploadToIPFS = async () => {
+    if (!fileName || !folderName || !branch || !department || !file) {
+      alert("Please fill in all fields and select a file.");
       return;
     }
 
-    if (fileMode === "create") {
-      const pathSegments = storagePath.split("/");
-      let current = folderStructure;
+    // Update path before uploading
+    const path = updatePath();
+    setPath(path); // Make sure to update the state with the correct path
 
-      pathSegments.forEach((segment, index) => {
-        if (!current[segment]) {
-          current[segment] = index === pathSegments.length - 1 ? [] : {};
-        }
-        current = current[segment];
-      });
+    setLoading(true); // Set loading state to true
 
-      if (uploadMode === "single" && singleFile) {
-        current.push(singleFile.name);
-      } else if (uploadMode === "bulk" && bulkFiles.length) {
-        bulkFiles.forEach((file) => current.push(file.name));
+    try {
+      // Create FormData to send file to Pinata
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
+
+      // Set headers with Pinata authentication keys
+      const headers = {
+        "Content-Type": "multipart/form-data",
+        pinata_api_key: pinataApiKey,
+        pinata_secret_api_key: pinataSecretApiKey,
+      };
+
+      // Upload file to Pinata
+      const response = await axios.post(pinataApiUrl, formData, { headers });
+
+      // Log the response from Pinata
+      console.log("Pinata Response:", response.data);
+
+      const fileHash = response.data.IpfsHash; // IPFS hash returned by Pinata
+
+      // Log all field values after successful upload
+      console.log("Uploaded File Details:");
+      console.log("File Name:", fileName);
+      console.log("Folder Name:", folderName);
+      console.log("Branch:", branch);
+      console.log("Department:", department);
+      console.log("Access (Private):", isPrivate); // Updated to isPrivate
+      console.log("Path:", path); // Log updated path
+      console.log("File Hash:", fileHash);
+
+      setIpfsHash(fileHash);
+
+      // Notify the parent component or trigger upload completion
+      if (onUploadComplete) {
+        onUploadComplete(fileHash);
       }
 
-      alert(`Folder and files added successfully to: ${storagePath}`);
-    } else if (fileMode === "update") {
-      const pathSegments = existingFolderPath.split("/");
-      let current = folderStructure;
+      const uploadDocs = await contract.uploadFile(
+        fileName,
+        folderName,
+        path,
+        ipfsHash,
+        branch,
+        department,
+        isPrivate
+      );
 
-      pathSegments.forEach((segment) => {
-        if (current[segment]) {
-          current = current[segment];
-        } else {
-          alert("Invalid folder path!");
-          return;
-        }
-      });
-
-      if (uploadMode === "single" && singleFile) {
-        current.push(singleFile.name);
-      } else if (uploadMode === "bulk" && bulkFiles.length) {
-        bulkFiles.forEach((file) => current.push(file.name));
-      }
-
-      alert(`Files uploaded successfully to: ${existingFolderPath}`);
+      await uploadDocs.wait();
+      console.log("File uploaded to blockchain :", uploadDocs);
+    } catch (error) {
+      console.error("Error uploading file to IPFS:", error);
+      alert("Failed to upload file to IPFS.");
+    } finally {
+      setLoading(false); // Set loading state to false after upload completes
     }
-
-    console.log("Updated Folder Structure:", folderStructure);
-    setSingleFile(null);
-    setBulkFiles([]);
   };
 
   return (
     <div className="max-w-2xl mx-auto p-6 border rounded-md shadow-md space-y-6">
-      <h1 className="text-2xl font-bold text-center">File Upload</h1>
+      <h1 className="text-2xl font-bold text-center">File Upload with IPFS</h1>
 
-      {/* Storage Path */}
+      {/* File Name */}
       <div>
-        <Label htmlFor="storagePath">Storage Path:</Label>
+        <Label htmlFor="fileName">File Name</Label>
         <Input
-          id="storagePath"
-          value={storagePath}
-          placeholder="Select branch, department, and folder"
-          disabled
+          id="fileName"
+          value={fileName}
+          onChange={(e) => setFileName(e.target.value)}
+          placeholder="Enter file name"
         />
       </div>
 
-      <Separator className="my-4" />
-
-      {/* Branch Selection */}
+      {/* Folder Name */}
       <div>
-        <Label>Select the Branch</Label>
+        <Label htmlFor="folderName">Folder Name</Label>
+        <Input
+          id="folderName"
+          value={folderName}
+          onChange={(e) => setFolderName(e.target.value)}
+          placeholder="Enter folder name"
+        />
+      </div>
+
+      {/* Branch */}
+      <div>
+        <Label>Select Branch</Label>
         <Select
           onValueChange={(value) => {
             setBranch(value);
-            setDepartment("");
-            setFolderName("");
-            setExistingFolderPath("");
-            setStoragePath("");
+            setPath(updatePath()); // Update path on branch change
           }}
         >
           <SelectTrigger className="w-full">
@@ -190,24 +158,23 @@ const FileUpload = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {Object.keys(categories).map((key, index) => (
-                <SelectItem key={index} value={key}>
-                  {key}
-                </SelectItem>
-              ))}
+              <SelectItem value="CSE">CSE</SelectItem>
+              <SelectItem value="ECE">ECE</SelectItem>
+              <SelectItem value="ME">ME</SelectItem>
+              <SelectItem value="CE">CE</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
       </div>
 
-      {/* Department Selection */}
+      {/* Department */}
       <div>
-        <Label>Select the Department</Label>
+        <Label>Select Department</Label>
         <Select
           disabled={!branch}
           onValueChange={(value) => {
             setDepartment(value);
-            updateStoragePath();
+            setPath(updatePath()); // Update path on department change
           }}
         >
           <SelectTrigger className="w-full">
@@ -215,158 +182,82 @@ const FileUpload = () => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {categories[branch]?.map((dep, index) => (
-                <SelectItem key={index} value={dep}>
-                  {dep}
-                </SelectItem>
-              ))}
+              <SelectItem value="test">Test</SelectItem>
+              <SelectItem value="research">Research</SelectItem>
+              <SelectItem value="administration">Administration</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
       </div>
 
-      <Separator className="my-4" />
-
-      {/* File Mode */}
+      {/* Path */}
       <div>
-        <div className="mb-4 flex justify-center gap-4">
-          <Button
-            variant={fileMode === "create" ? "secondary" : "primary"}
-            onClick={() => setFileMode("create")}
-          >
-            Create Folder
-          </Button>
-          <Button
-            variant={fileMode === "update" ? "secondary" : "primary"}
-            onClick={() => setFileMode("update")}
-          >
-            Add to Existing Folder
-          </Button>
-        </div>
-
-        {fileMode === "create" && (
-          <div>
-            <Label>Enter Folder Name</Label>
-            <Input
-              type="text"
-              value={folderName}
-              onChange={(e) => {
-                setFolderName(e.target.value);
-                updateStoragePath();
-              }}
-              placeholder="Enter folder name"
-            />
-          </div>
-        )}
-
-        {fileMode === "update" && (
-          <div>
-            <Label>Enter Existing Folder Path</Label>
-            <Input
-              type="text"
-              value={existingFolderPath}
-              onChange={(e) => {
-                setExistingFolderPath(e.target.value);
-                updateStoragePath();
-              }}
-              placeholder="Enter folder path"
-            />
-          </div>
-        )}
+        <Label htmlFor="path">Path</Label>
+        <Input
+          id="path"
+          value={path}
+          disabled
+          placeholder="Path auto-updates based on branch and department"
+        />
       </div>
 
-      <Separator className="my-4" />
-
-      {/* Upload Mode */}
-      <div className="mb-4 flex justify-center gap-4">
-        <Button
-          variant={uploadMode === "single" ? "secondary" : "primary"}
-          onClick={() => setUploadMode("single")}
+      {/* Access Type */}
+      <div>
+        <Label>Access Type</Label>
+        <RadioGroup
+          value={isPrivate ? "private" : "public"}
+          onValueChange={(value) => setIsPrivate(value === "private")}
         >
-          Single Upload
-        </Button>
-        <Button
-          variant={uploadMode === "bulk" ? "secondary" : "primary"}
-          onClick={() => setUploadMode("bulk")}
-        >
-          Bulk Upload
-        </Button>
+          <div className="flex items-center space-x-4">
+            <RadioGroupItem value="public" id="public" />
+            <Label htmlFor="public">Public</Label>
+            <RadioGroupItem value="private" id="private" />
+            <Label htmlFor="private">Private</Label>
+          </div>
+        </RadioGroup>
       </div>
 
       {/* File Upload */}
-      {uploadMode === "single" && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-medium">Single File Upload</h2>
-          </CardHeader>
-          <CardContent>
-            <label className="flex items-center gap-2 cursor-pointer text-blue-600">
-              <AiOutlineCloudUpload size={30} />
-              <span>Choose File</span>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                onChange={handleSingleFileChange}
-                hidden
-              />
-            </label>
-            {singleFile && (
-              <div className="mt-2 flex items-center gap-2">
-                {singleFile.type.includes("pdf") ? (
-                  <AiOutlineFilePdf size={25} />
-                ) : (
-                  <FaFileImage size={25} />
-                )}
-                <span>{singleFile.name}</span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {uploadMode === "bulk" && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-medium">Bulk File Upload</h2>
-          </CardHeader>
-          <CardContent>
-            <label className="flex items-center gap-2 cursor-pointer text-blue-600">
-              <AiOutlineCloudUpload size={30} />
-              <span>Choose Files</span>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                multiple
-                onChange={handleBulkFilesChange}
-                hidden
-              />
-            </label>
-            {bulkFiles.length > 0 && (
-              <div className="mt-2">
-                <h3 className="text-sm font-medium">Selected Files:</h3>
-                <ul>
-                  {bulkFiles.map((file, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      {file.type.includes("pdf") ? (
-                        <AiOutlineFilePdf size={25} />
-                      ) : (
-                        <FaFileImage size={25} />
-                      )}
-                      <span>{file.name}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
+      <div>
+        <Label htmlFor="file">Upload File</Label>
+        <Input id="file" type="file" onChange={handleFileChange} />
+      </div>
 
       <Separator className="my-4" />
 
-      <Button variant="secondary" className="w-full" onClick={handleUpload}>
-        Upload Files
+      {/* Upload Button */}
+      <Button
+        variant="secondary"
+        className="w-full"
+        onClick={handleUploadToIPFS}
+        disabled={loading} // Disable button when uploading
+      >
+        {loading ? "Uploading..." : "Upload to IPFS"}
       </Button>
+
+      {/* IPFS Hash */}
+      {ipfsHash && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-lg font-medium">File Uploaded to IPFS</h2>
+          </CardHeader>
+          <CardContent>
+            <p>
+              <strong>IPFS Hash:</strong> {ipfsHash}
+            </p>
+            <p>
+              <a
+                href={`https://gateway.pinata.cloud/ipfs/${ipfsHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline"
+              >
+                View File on IPFS
+              </a>
+            </p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
