@@ -32,16 +32,13 @@ const FileUpload = ({ onUploadComplete }) => {
   const [bulkFiles, setBulkFiles] = useState([]);
   const [storagePath, setStoragePath] = useState("");
   const { state } = useContract();
-  const contract = state?.contract;
+  const contract = state.contract;
 
   useEffect(() => {
     if (!contract) {
-      console.log("Waiting for contract initialization...");
+      console.log("Contract is not initialized yet");
       return;
     }
-
-    // Now you can use the contract after it's initialized
-    console.log("Contract available:", contract);
   }, [contract]);
 
   // Pinata API endpoint and authentication
@@ -51,7 +48,7 @@ const FileUpload = ({ onUploadComplete }) => {
 
   // Update path based on branch and department
   const updatePath = () => {
-    const pathSegments = [branch, department, folderName, file?.name].filter(
+    const pathSegments = [branch, department, folderName, fileName].filter(
       Boolean
     );
     return pathSegments.join("/");
