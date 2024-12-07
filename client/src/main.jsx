@@ -17,6 +17,7 @@ import MetaMaskConnect from "./components/Mycomponets/metamask/MetaMaskConnect";
 import CreateForm from "./components/Mycomponets/forms/CreateForm";
 import FileUpload from "./components/Mycomponets/forms/FileUpload";
 import { ContractProvider } from "./ContractContext/ContractContext";
+import View from "./components/Mycomponets/fileview/View";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -27,6 +28,7 @@ const router = createBrowserRouter(
         {/* restricted usrsroute */}
         <Route path="/createuser" element={<CreateForm />} />
         <Route path="/uploadfiles" element={<FileUpload />} />
+        <Route path="/view" element={<View/>}/>
       </Route>
     </>
   )
