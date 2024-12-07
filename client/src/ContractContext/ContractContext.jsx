@@ -12,9 +12,8 @@ export const ContractProvider = ({ children }) => {
     contract: null,
   });
 
-  const contractAddress = "0x65576A9dc428fF578e8af63A9e03b13907559251";
+  const contractAddress = "0x6ab9Aa49405620abfF43B6Fe2d885a3Eb46D999C";
   const contractABI = abi.abi;
-  
 
   useEffect(() => {
     const getWalletAddress = async () => {
@@ -30,7 +29,7 @@ export const ContractProvider = ({ children }) => {
             signer
           );
           setState({ provider, signer, contract });
-          console.log("Contract initialized:", contract); // Check if contract is initialized
+          console.log("Contract initialized:", contract);
         } else {
           console.log("No accounts found! Please connect your wallet.");
         }

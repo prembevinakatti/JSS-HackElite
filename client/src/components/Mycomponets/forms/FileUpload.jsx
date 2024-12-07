@@ -27,13 +27,22 @@ const FileUpload = ({ onUploadComplete }) => {
   const [file, setFile] = useState(null);
   const [ipfsHash, setIpfsHash] = useState("");
   const [loading, setLoading] = useState(false); // Loading state
-  const [uploadMode, setUploadMode] = useState('single'); // 'single' or 'bulk'
+  const [uploadMode, setUploadMode] = useState("single"); // 'single' or 'bulk'
   const [singleFile, setSingleFile] = useState(null);
   const [bulkFiles, setBulkFiles] = useState([]);
-  const [storagePath, setStoragePath] = useState('');
+  const [storagePath, setStoragePath] = useState("");
   const { state } = useContract();
-  const contract = state.contract;
-  console.log("contract", contract);
+  const contract = state?.contract;
+
+  useEffect(() => {
+    if (!contract) {
+      console.log("Waiting for contract initialization...");
+      return;
+    }
+
+    // Now you can use the contract after it's initialized
+    console.log("Contract available:", contract);
+  }, [contract]);
 
   // Pinata API endpoint and authentication
   const pinataApiUrl = "https://api.pinata.cloud/pinning/pinFileToIPFS";
@@ -42,22 +51,24 @@ const FileUpload = ({ onUploadComplete }) => {
 
   // Update path based on branch and department
   const updatePath = () => {
-    const pathSegments = [branch, department, folderName, file?.name].filter(Boolean);
-    return pathSegments.join('/');
+    const pathSegments = [branch, department, folderName, file?.name].filter(
+      Boolean
+    );
+    return pathSegments.join("/");
   };
-  
+
   useEffect(() => {
     setPath(updatePath());
   }, [branch, department, folderName, file]);
-  
+
   const handleSingleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
-  
+
     setFile(selectedFile);
     setPath(updatePath()); // Ensure path updates when file changes
   };
-  
+
   const handleBulkFilesChange = (e) => {
     const files = Array.from(e.target.files);
     setBulkFiles(files);
@@ -207,11 +218,13 @@ const FileUpload = ({ onUploadComplete }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              {Object.keys(categories).map((branch,index)=>{
-                return  <SelectItem value={branch} key={index}>{branch}</SelectItem>
-              })
-              }
-             
+              {Object.keys(categories).map((branch, index) => {
+                return (
+                  <SelectItem value={branch} key={index}>
+                    {branch}
+                  </SelectItem>
+                );
+              })}
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -232,12 +245,11 @@ const FileUpload = ({ onUploadComplete }) => {
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-            {categories[branch]?.map((departments, index) => (
-  <SelectItem value={departments} key={index}>
-    {departments}
-  </SelectItem>
-))}
-
+              {categories[branch]?.map((departments, index) => (
+                <SelectItem value={departments} key={index}>
+                  {departments}
+                </SelectItem>
+              ))}
             </SelectGroup>
           </SelectContent>
         </Select>
@@ -247,7 +259,7 @@ const FileUpload = ({ onUploadComplete }) => {
       <div>
         <Label htmlFor="folderName">Folder Name</Label>
         <Input
-        disabled={!department}
+          disabled={!department}
           id="folderName"
           value={folderName}
           onChange={(e) => setFolderName(e.target.value)}
@@ -257,14 +269,14 @@ const FileUpload = ({ onUploadComplete }) => {
       <div>
         <Label htmlFor="fileName">File Name</Label>
         <Input
-        disabled={!folderName}
+          disabled={!folderName}
           id="fileName"
           value={fileName}
           onChange={(e) => setFileName(e.target.value)}
           placeholder="Enter file name"
         />
       </div>
-    
+
       <div>
         <Label htmlFor="path">Path</Label>
         <Input
@@ -293,19 +305,19 @@ const FileUpload = ({ onUploadComplete }) => {
       {/* File Upload */}
       <div className="mb-4 flex justify-center gap-4">
         <Button
-          variant={uploadMode === 'single' ? 'secondary' : 'primary'}
-          onClick={() => setUploadMode('single')}
+          variant={uploadMode === "single" ? "secondary" : "primary"}
+          onClick={() => setUploadMode("single")}
         >
           Single Upload
         </Button>
         <Button
-          variant={uploadMode === 'bulk' ? 'secondary' : 'primary'}
-          onClick={() => setUploadMode('bulk')}
+          variant={uploadMode === "bulk" ? "secondary" : "primary"}
+          onClick={() => setUploadMode("bulk")}
         >
           Bulk Upload
         </Button>
       </div>
-      {uploadMode === 'single' && (
+      {uploadMode === "single" && (
         <Card>
           <CardHeader>
             <h2 className="text-lg font-medium">Single File Upload</h2>
@@ -323,7 +335,7 @@ const FileUpload = ({ onUploadComplete }) => {
             </label>
             {singleFile && (
               <div className="mt-2 flex items-center gap-2">
-                {singleFile.type.includes('pdf') ? (
+                {singleFile.type.includes("pdf") ? (
                   <AiOutlineFilePdf size={25} />
                 ) : (
                   <FaFileImage size={25} />
@@ -335,7 +347,7 @@ const FileUpload = ({ onUploadComplete }) => {
         </Card>
       )}
 
-      {uploadMode === 'bulk' && (
+      {uploadMode === "bulk" && (
         <Card>
           <CardHeader>
             <h2 className="text-lg font-medium">Bulk File Upload</h2>
@@ -358,7 +370,7 @@ const FileUpload = ({ onUploadComplete }) => {
                 <ul className="list-disc list-inside">
                   {bulkFiles.map((file, index) => (
                     <li key={index} className="flex items-center gap-2">
-                      {file.type.includes('pdf') ? (
+                      {file.type.includes("pdf") ? (
                         <AiOutlineFilePdf size={20} />
                       ) : (
                         <FaFileImage size={20} />
