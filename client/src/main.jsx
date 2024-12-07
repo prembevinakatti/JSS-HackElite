@@ -11,12 +11,13 @@ import {
 import { Toaster } from "react-hot-toast";
 import { ThemeProvider } from "./components/ui/theme-provider";
 import { Provider } from "react-redux";
-import { store } from "./redux/store";
+import store, { persistor } from "./redux/store";
 import Login from "./components/Mycomponets/auth/Login";
 import MetaMaskConnect from "./components/Mycomponets/metamask/MetaMaskConnect";
 import CreateForm from "./components/Mycomponets/forms/CreateForm";
 import FileUpload from "./components/Mycomponets/forms/FileUpload";
 import { ContractProvider } from "./ContractContext/ContractContext";
+import { PersistGate } from "redux-persist/integration/react";
 import View from "./components/Mycomponets/fileview/View";
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -38,9 +39,11 @@ createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Provider store={store}>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <ContractProvider>
-          <RouterProvider router={router} />
-        </ContractProvider>
+        <PersistGate loading={null} persistor={persistor}>
+          <ContractProvider>
+            <RouterProvider router={router} />
+          </ContractProvider>
+        </PersistGate>
       </ThemeProvider>
     </Provider>
   </StrictMode>
