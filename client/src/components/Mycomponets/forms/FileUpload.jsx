@@ -17,8 +17,10 @@ import axios from "axios"; // Using axios to interact with Pinata API
 import { useContract } from "@/ContractContext/ContractContext";
 import { FaFileImage } from "react-icons/fa";
 import { AiOutlineCloudUpload } from "react-icons/ai";
+import { AiOutlineFilePdf } from "react-icons/ai"; // Added for PDF icon
+
 const FileUpload = ({ onUploadComplete }) => {
-  const [fileName, setFileName] = useState("");
+  const [fileNames, setFileName] = useState([]); // Initialize as an array
   const [folderName, setFolderName] = useState("");
   const [branch, setBranch] = useState("");
   const [department, setDepartment] = useState("");
@@ -48,31 +50,39 @@ const FileUpload = ({ onUploadComplete }) => {
 
   // Update path based on branch and department
   const updatePath = () => {
-    const pathSegments = [branch, department, folderName, fileName].filter(
-      Boolean
-    );
+    const pathSegments = [branch, department, folderName].filter(Boolean);
     return pathSegments.join("/");
   };
 
   useEffect(() => {
     setPath(updatePath());
-  }, [branch, department, folderName, file]);
+  }, [branch, department, folderName]);
 
   const handleSingleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
-    setFile(selectedFile);
-    setPath(updatePath()); // Ensure path updates when file changes
+    setSingleFile(selectedFile);
+    setFileName([selectedFile.name.split(".")[0]]); // Store single file name in an array
+    setPath(updatePath()); // Update path
   };
 
   const handleBulkFilesChange = (e) => {
     const files = Array.from(e.target.files);
     setBulkFiles(files);
+
+    // Extract and store file names in an array
+    const fileNamesArray = files.map((file) => file.name.split(".")[0]); // Store names without extensions
+    setFileName(fileNamesArray); // Update fileName as an array
   };
 
   const handleUploadToIPFS = async () => {
-    if (!fileName || !folderName || !branch || !department || !file) {
+    if (
+      !folderName ||
+      !branch ||
+      !department ||
+      (!singleFile && bulkFiles.length === 0)
+    ) {
       alert("Please fill in all fields and select a file.");
       return;
     }
@@ -84,55 +94,78 @@ const FileUpload = ({ onUploadComplete }) => {
     setLoading(true); // Set loading state to true
 
     try {
-      // Create FormData to send file to Pinata
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
+      let ipfsHashes = [];
 
-      // Set headers with Pinata authentication keys
-      const headers = {
-        "Content-Type": "multipart/form-data",
-        pinata_api_key: pinataApiKey,
-        pinata_secret_api_key: pinataSecretApiKey,
-      };
+      if (singleFile) {
+        // Single file upload
+        console.log("Uploading single file:", singleFile.name);
+        const formData = new FormData();
+        formData.append("file", singleFile);
+        formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
 
-      // Upload file to Pinata
-      const response = await axios.post(pinataApiUrl, formData, { headers });
+        const headers = {
+          "Content-Type": "multipart/form-data",
+          pinata_api_key: pinataApiKey,
+          pinata_secret_api_key: pinataSecretApiKey,
+        };
 
-      // Log the response from Pinata
-      console.log("Pinata Response:", response.data);
+        const response = await axios.post(pinataApiUrl, formData, { headers });
+        const fileHash = response.data.IpfsHash;
+        ipfsHashes.push(fileHash);
+        console.log("Uploaded single file hash:", fileHash);
+      }
 
-      const fileHash = response.data.IpfsHash; // IPFS hash returned by Pinata
+      if (bulkFiles.length > 0) {
+        // Bulk file upload
+        console.log("Uploading bulk files:");
+        for (let i = 0; i < bulkFiles.length; i++) {
+          console.log(`Uploading file ${i + 1}: ${bulkFiles[i].name}`);
+          const formData = new FormData();
+          formData.append("file", bulkFiles[i]);
+          formData.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
 
-      // Log all field values after successful upload
-      console.log("Uploaded File Details:");
-      console.log("File Name:", fileName);
+          const headers = {
+            "Content-Type": "multipart/form-data",
+            pinata_api_key: pinataApiKey,
+            pinata_secret_api_key: pinataSecretApiKey,
+          };
+
+          const response = await axios.post(pinataApiUrl, formData, {
+            headers,
+          });
+          const fileHash = response.data.IpfsHash;
+          ipfsHashes.push(fileHash);
+          console.log(`Uploaded bulk file ${i + 1} hash:`, fileHash);
+        }
+      }
+
+      console.log("Form Data:");
+      console.log("File Name:", fileNames);
       console.log("Folder Name:", folderName);
       console.log("Branch:", branch);
       console.log("Department:", department);
-      console.log("Access (Private):", isPrivate); // Updated to isPrivate
-      console.log("Path:", path); // Log updated path
-      console.log("File Hash:", fileHash);
-
-      setIpfsHash(fileHash);
+      console.log("Private:", isPrivate);
+      console.log("Path:", path);
+      console.log("files:", ipfsHashes);
 
       // Notify the parent component or trigger upload completion
       if (onUploadComplete) {
-        onUploadComplete(fileHash);
+        onUploadComplete(ipfsHashes);
       }
 
-      const uploadDocs = await contract.uploadFile(
-        fileName,
+      const uploadDocs = await contract.uploadFiles(
+        fileNames,
         folderName,
         path,
-        ipfsHash,
+        ipfsHashes,
         branch,
         department,
         isPrivate
       );
 
       await uploadDocs.wait();
-      console.log("File uploaded to blockchain :", uploadDocs);
+
+      console.log("Upload to blockchain successfully");
     } catch (error) {
       console.error("Error uploading file to IPFS:", error);
       alert("Failed to upload file to IPFS.");
@@ -140,6 +173,7 @@ const FileUpload = ({ onUploadComplete }) => {
       setLoading(false); // Set loading state to false after upload completes
     }
   };
+
   const categories = {
     Administrative: [
       "Institutional Policies",
@@ -198,6 +232,7 @@ const FileUpload = ({ onUploadComplete }) => {
     ],
     Events: ["Event_Approvals", "Cultural_Activities"],
   };
+
   return (
     <div className="max-w-2xl mx-auto p-6 border rounded-md shadow-md space-y-6">
       <h1 className="text-2xl font-bold text-center">File Upload with IPFS</h1>
@@ -252,7 +287,7 @@ const FileUpload = ({ onUploadComplete }) => {
         </Select>
       </div>
 
-      {/* Path */}
+      {/* Folder Name */}
       <div>
         <Label htmlFor="folderName">Folder Name</Label>
         <Input
@@ -264,16 +299,26 @@ const FileUpload = ({ onUploadComplete }) => {
         />
       </div>
       <div>
-        <Label htmlFor="fileName">File Name</Label>
-        <Input
-          disabled={!folderName}
-          id="fileName"
-          value={fileName}
-          onChange={(e) => setFileName(e.target.value)}
-          placeholder="Enter file name"
-        />
+        <Label htmlFor="fileName">File Name(s)</Label>
+        {uploadMode === "bulk" ? (
+          <Input
+            id="fileName"
+            value={fileNames.join(", ")} // Display file names as a comma-separated string
+            readOnly
+            disabled
+            placeholder="Automatically Takes File Names From Uploaded Files"
+          />
+        ) : (
+          <Input
+            id="fileName"
+            value={fileNames[0] || ""} // Display the first file name for single upload
+            readOnly
+            placeholder="Enter File Name ( Or Ignore If Uploading Bulk Files )"
+          />
+        )}
       </div>
 
+      {/* Path */}
       <div>
         <Label htmlFor="path">Path</Label>
         <Input
@@ -283,6 +328,7 @@ const FileUpload = ({ onUploadComplete }) => {
           placeholder="Path auto-updates based on branch and department"
         />
       </div>
+
       {/* Access Type */}
       <div>
         <Label>Access Type</Label>
@@ -317,21 +363,16 @@ const FileUpload = ({ onUploadComplete }) => {
       {uploadMode === "single" && (
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-medium">Single File Upload</h2>
+            <h2 className="text-lg font-semibold">Single File Upload</h2>
           </CardHeader>
           <CardContent>
-            <label className="flex items-center gap-2 cursor-pointer text-blue-600">
-              <AiOutlineCloudUpload size={30} />
-              <span>Choose File</span>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                onChange={handleSingleFileChange}
-                hidden
-              />
-            </label>
+            <input
+              type="file"
+              onChange={handleSingleFileChange}
+              accept="image/*,application/pdf"
+            />
             {singleFile && (
-              <div className="mt-2 flex items-center gap-2">
+              <div className="mt-2">
                 {singleFile.type.includes("pdf") ? (
                   <AiOutlineFilePdf size={25} />
                 ) : (
@@ -347,76 +388,42 @@ const FileUpload = ({ onUploadComplete }) => {
       {uploadMode === "bulk" && (
         <Card>
           <CardHeader>
-            <h2 className="text-lg font-medium">Bulk File Upload</h2>
+            <h2 className="text-lg font-semibold">Bulk File Upload</h2>
           </CardHeader>
           <CardContent>
-            <label className="flex items-center gap-2 cursor-pointer text-blue-600">
-              <AiOutlineCloudUpload size={30} />
-              <span>Choose Files</span>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                multiple
-                onChange={handleBulkFilesChange}
-                hidden
-              />
-            </label>
+            <input
+              type="file"
+              multiple
+              onChange={handleBulkFilesChange}
+              accept="image/*,application/pdf"
+            />
             {bulkFiles.length > 0 && (
               <div className="mt-2">
-                <h3 className="text-sm font-medium">Selected Files:</h3>
-                <ul className="list-disc list-inside">
-                  {bulkFiles.map((file, index) => (
-                    <li key={index} className="flex items-center gap-2">
-                      {file.type.includes("pdf") ? (
-                        <AiOutlineFilePdf size={20} />
-                      ) : (
-                        <FaFileImage size={20} />
-                      )}
-                      <span>{file.name}</span>
-                    </li>
-                  ))}
-                </ul>
+                {bulkFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    {file.type.includes("pdf") ? (
+                      <AiOutlineFilePdf size={25} />
+                    ) : (
+                      <FaFileImage size={25} />
+                    )}
+                    <span>{file.name}</span>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
       )}
 
-      <Separator className="my-4" />
-
       {/* Upload Button */}
       <Button
-        variant="secondary"
-        className="w-full"
         onClick={handleUploadToIPFS}
-        disabled={loading} // Disable button when uploading
+        disabled={loading}
+        variant="primary"
+        className="w-full"
       >
         {loading ? "Uploading..." : "Upload to IPFS"}
       </Button>
-
-      {/* IPFS Hash */}
-      {ipfsHash && (
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-medium">File Uploaded to IPFS</h2>
-          </CardHeader>
-          <CardContent>
-            <p>
-              <strong>IPFS Hash:</strong> {ipfsHash}
-            </p>
-            <p>
-              <a
-                href={`https://gateway.pinata.cloud/ipfs/${ipfsHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-              >
-                View File on IPFS
-              </a>
-            </p>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
