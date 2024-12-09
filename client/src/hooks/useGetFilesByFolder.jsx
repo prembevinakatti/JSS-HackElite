@@ -5,24 +5,24 @@ const useGetFilesByFolder = ({ branch, department, folderName }) => {
   const { state } = useContract();
   const contract = state?.contract;
   const [files, setFiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  console.log("files :", files);
-
   useEffect(() => {
+    // Exit early if parameters are invalid
+    if (!branch || !department || !folderName) {
+      setFiles([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const fetchFiles = async () => {
+      setLoading(true);
+      setError(null);
       try {
-        const result = await contract.getFilesByFolder(
-          "CSE",
-          "Faculty_Records",
-          "test"
-        );
+        const result = await contract.getFilesByFolder(branch, department, folderName);
 
-        console.log("result",result);
-        
-
-        // Mapping the result to the files array
         const filesData = result.map((file) => ({
           id: file?.id.toString(),
           fileName: file?.fileName,
@@ -44,7 +44,7 @@ const useGetFilesByFolder = ({ branch, department, folderName }) => {
     };
 
     fetchFiles();
-  }, [branch, department, folderName]);
+  }, [branch, department, folderName, contract]);
 
   return { files, loading, error };
 };

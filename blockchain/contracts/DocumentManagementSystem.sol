@@ -171,6 +171,25 @@ function getAllBranches() external view returns (string[] memory) {
     return uniqueBranches;
 }
 
+/// @notice Delete a file by its ID
+/// @param _fileId The ID of the file to delete
+function deleteFile(uint256 _fileId) external {
+    // Ensure the file exists
+    require(files[_fileId].id != 0, "File does not exist");
+
+    // Ensure the caller is the uploader of the file
+    require(
+        files[_fileId].uploader == msg.sender,
+        "Only the uploader can delete this file"
+    );
+
+    // Delete the file
+    delete files[_fileId];
+
+    emit FileUploaded(_fileId, "", "", "", "", "", "", address(0), false);
+}
+
+
 
    /// @notice Get all departments by a specific branch across all paths
 /// @param _branch The branch name to fetch departments for
