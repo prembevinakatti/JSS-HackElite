@@ -6,11 +6,25 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { RiFolderShield2Fill, RiFileFill } from "react-icons/ri";
+import { RiFolderShield2Fill } from "react-icons/ri";
 import useGetAllBranches from "@/hooks/useGetAllBranchs";
 import useGetDepartmentsByBranch from "@/hooks/useGetDepartmentsByBranch";
 import useGetFoldersByDepartment from "@/hooks/useGetFoldersByDepartment";
 import useGetFilesByFolder from "@/hooks/useGetFilesByFolder";
+import { Button } from "@/components/ui/button";
+import { RiFileFill } from "react-icons/ri";
+import { FaRegFileLines } from "react-icons/fa6";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function View() {
   const [breadcrumbs, setBreadcrumbs] = useState(["Home"]);
@@ -18,7 +32,12 @@ function View() {
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedFolder, setSelectedFolder] = useState(null);
-
+  const [selectedFile, setSelectedFile] = useState(null);
+  
+  const handleKnowMoreClick = (file) => {
+    setSelectedFile(file);
+  };
+  
   const {
     branches,
     loading: branchesLoading,
@@ -77,12 +96,7 @@ function View() {
       setBreadcrumbs(["Home", selectedBranch, folderName]);
     } else if (departmentFolders?.includes(folderName)) {
       setSelectedFolder(folderName);
-      setBreadcrumbs([
-        "Home",
-        selectedBranch,
-        selectedDepartment,
-        folderName,
-      ]);
+      setBreadcrumbs([ "Home", selectedBranch, selectedDepartment, folderName ]);
     }
   }
 
@@ -124,15 +138,15 @@ function View() {
 
         {/* Breadcrumb Navigation */}
         <Breadcrumb>
-          <BreadcrumbList className="flex flex-wrap text-gray-700 dark:text-gray-300 mb-6">
+          <BreadcrumbList className="flex flex-wrap mb-6">
             {breadcrumbs.map((crumb, index) => (
               <BreadcrumbItem key={index}>
                 <BreadcrumbLink
                   onClick={() => handleBreadcrumbClick(index)}
                   className={`cursor-pointer ${
                     index === breadcrumbs.length - 1
-                      ? "text-gray-900 dark:text-gray-100 font-semibold"
-                      : "hover:text-blue-500 dark:hover:text-blue-400"
+                      ? "font-semibold"
+                      : "hover:text-blue-500"
                   }`}
                 >
                   {crumb}
@@ -149,10 +163,10 @@ function View() {
             <div
               key={index}
               onClick={() => handleFolderClick(folder)}
-              className="cursor-pointer bg-gray-100 dark:bg-gray-800 border border-gray-800 dark:border-gray-800 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
+              className="cursor-pointer border rounded-lg p-4 flex flex-col items-center hover:shadow-lg transform transition duration-200 ease-in-out hover:scale-105"
             >
-              <RiFolderShield2Fill size={60} className="text-yellow-500 mb-2" />
-              <span className="text-gray-800 dark:text-gray-200 font-medium truncate text-center">
+              <RiFolderShield2Fill size={60} className="mb-2 text-orange-500 " />
+              <span className="font-medium truncate text-center">
                 {folder}
               </span>
             </div>
@@ -161,29 +175,115 @@ function View() {
 
         {/* Files in Selected Folder */}
         {selectedFolder && (
-          <div className="mt-6">
-            <h2 className="text-xl font-bold">Files in {selectedFolder}</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
-              {files?.map((file, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-800 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
+            {files?.map((file, index) => (
+              <div
+                key={index}
+                className="border rounded-lg p-4 flex flex-col items-center hover:shadow-lg transform transition duration-200 ease-in-out hover:scale-105"
+              >
+                <FaRegFileLines size={60} className="mb-2 text-blue-500" />
+                <a
+                  href={file?.path || "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 font-medium truncate text-center"
                 >
-                  <RiFileFill size={60} className="text-blue-500 mb-2" />
-                  <a
-                    href={file?.path || "#"} // Replace with actual file URL
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-600 dark:text-blue-400 font-medium truncate text-center"
-                  >
-                    {file?.fileName}
-                  </a>
-                  <p className="text-gray-600 dark:text-gray-400 text-xs mt-2">
-                    Uploaded by: {file?.uploader}
-                  </p>
-                </div>
-              ))}
-            </div>
+                  {file?.fileName}
+                </a>
+                <p className="text-xs mt-2">
+                  <Button className="rounded px-3 py-1 hover:bg-blue-600 transition">
+                    View file
+                  </Button>
+                </p>
+                <p
+                  className="underline ml-2 mt-3 cursor-pointer"
+                  onClick={() => handleKnowMoreClick(file)}
+                >
+                  Know more
+                </p>
+
+                {/* Dialog for file details */}
+                {selectedFile && (
+                  <Dialog open={selectedFile === file} onOpenChange={() => setSelectedFile(null)}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="hidden">
+                        Edit Profile
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>File Details</DialogTitle>
+                        <DialogDescription>
+                          Here are the details for the file "{file?.fileName}".
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="fileName" className="text-right">
+                            File Name
+                          </Label>
+                          <Input
+                            id="fileName"
+                            defaultValue={file?.fileName}
+                            className="col-span-3"
+                            readOnly
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="branch" className="text-right">
+                            Branch
+                          </Label>
+                          <Input
+                            id="branch"
+                            defaultValue={file?.branch}
+                            className="col-span-3"
+                            readOnly
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="department" className="text-right">
+                            Department
+                          </Label>
+                          <Input
+                            id="department"
+                            defaultValue={file?.department}
+                            className="col-span-3"
+                            readOnly
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="uploader" className="text-right">
+                            Uploader
+                          </Label>
+                          <Input
+                            id="uploader"
+                            defaultValue={file?.uploader}
+                            className="col-span-3"
+                            readOnly
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="ipfsHash" className="text-right">
+                            IPFS Hash
+                          </Label>
+                          <Input
+                            id="ipfsHash"
+                            defaultValue={file?.ipfsHash}
+                            className="col-span-3"
+                            readOnly
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="button" onClick={() => setSelectedFile(null)}>
+                          Close
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
+              </div>
+            ))}
           </div>
         )}
       </div>
