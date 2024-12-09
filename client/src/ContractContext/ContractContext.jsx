@@ -12,7 +12,7 @@ export const ContractProvider = ({ children }) => {
     contract: null,
   });
 
-  const contractAddress = "0xcf4068f9C0921Da9910644d2F0D00e808950288A";
+  const contractAddress = "0xB91F15a5588B80a98Eecc43570E4cb516609b03c";
   const contractABI = abi.abi;
 
   useEffect(() => {

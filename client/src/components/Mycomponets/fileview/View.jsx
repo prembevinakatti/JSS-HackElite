@@ -7,45 +7,48 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { RiFolderShield2Fill, RiFileFill } from "react-icons/ri";
+import useGetAllBranches from "@/hooks/useGetAllBranchs";
+import useGetDepartmentsByBranch from "@/hooks/useGetDepartmentsByBranch";
 
 function View() {
   const [breadcrumbs, setBreadcrumbs] = useState(["Home"]);
   const [folders, setFolders] = useState([]);
   const [files, setFiles] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState(null); // For dynamic branch selection
 
-  // Simulating a blockchain contract call
-  async function retrieveData(path) {
-    // Replace this mock data with your blockchain contract data retrieval logic
-    console.log(breadcrumbs)
-    const mockData = {
-      Home: {
-        folders: ["Branch1", "Branch2", "Branch3"],
-        files: [],
-      },
-      Branch1: {
-        folders: ["Department1", "Department2"],
-        files: [],
-      },
-      Department1: {
-        folders: ["Folder1"],
-        files: ["file1.pdf", "file2.docx"],
-      },
-      Folder1: {
-        folders: [],
-        files: ["final_report.xlsx", "notes.txt"],
-      },
-    };
-
-    return mockData[path] || { folders: [], files: [] };
-  }
+  const { branches, loading: branchesLoading, error: branchesError } = useGetAllBranches();
+  const { departments, loading: departmentsLoading, error: departmentsError } =
+    useGetDepartmentsByBranch(selectedBranch); // Fetch departments dynamically based on branch
 
   useEffect(() => {
-    // Load initial data for the "Home" path
-    updateView("Home");
-  }, []);
+    if (!branchesLoading && !branchesError) {
+      // Initial load for the "Home" view
+      setFolders(branches);
+      setFiles([]);
+    }
+  }, [branches, branchesLoading, branchesError]);
 
-  async function updateView(path) {
-    const data = await retrieveData(path);
+  useEffect(() => {
+    // Update folders when departments are loaded for a selected branch
+    if (!departmentsLoading && selectedBranch) {
+      setFolders(departments);
+      setFiles([]); // No files at the branch level
+    }
+  }, [departments, departmentsLoading, selectedBranch]);
+
+  async function retrieveData(folderName) {
+    // Check if the clicked folder is a branch
+    if (branches.includes(folderName)) {
+      setSelectedBranch(folderName); // Trigger fetching departments
+      return { folders: departments, files: [] }; // Use departments from the hook
+    }
+
+    // Placeholder for other folder types
+    return { folders: [], files: [] };
+  }
+
+  async function updateView(folderName) {
+    const data = await retrieveData(folderName);
     setFolders(data.folders);
     setFiles(data.files);
   }
@@ -61,6 +64,9 @@ function View() {
     setBreadcrumbs(newBreadcrumbs);
     updateView(newBreadcrumbs[newBreadcrumbs.length - 1]);
   }
+
+  if (branchesLoading || departmentsLoading) return <p>Loading...</p>;
+  if (branchesError || departmentsError) return <p>Error: {branchesError || departmentsError}</p>;
 
   return (
     <div className="min-h-screen p-10">
@@ -97,7 +103,9 @@ function View() {
               className="cursor-pointer bg-gray-100 dark:bg-gray-800 border border-gray-800 dark:border-gray-800 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
             >
               <RiFolderShield2Fill size={60} className="text-yellow-500 mb-2" />
-              <span className="text-gray-800 dark:text-gray-200 font-medium truncate text-center">{folder}</span>
+              <span className="text-gray-800 dark:text-gray-200 font-medium truncate text-center">
+                {folder}
+              </span>
             </div>
           ))}
 

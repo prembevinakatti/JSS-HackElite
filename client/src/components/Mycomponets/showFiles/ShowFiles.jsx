@@ -1,3 +1,4 @@
+import useGetFoldersByDepartment from "@/hooks/useGetFoldersByDepartment";
 import React, { useState } from "react";
 
 // Sample file metadata
@@ -47,6 +48,14 @@ const ShowFiles = () => {
   const [currentFolder, setCurrentFolder] = useState(fileTree);
   const [path, setPath] = useState([]);
 
+  // const departments = getDepartmentsByBranch("CSE");
+  const branchName = "CSE";
+  const department = "Faculty_Records";
+  const folders = useGetFoldersByDepartment(branchName, department);
+  console.log("folders", folders);
+
+  // const files = getFilesByFolder("CSE", department, folderName);
+
   // Open folder
   const openFolder = (folderName) => {
     setPath([...path, folderName]);
@@ -69,7 +78,9 @@ const ShowFiles = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-4xl mx-auto bg-white shadow-lg rounded-lg p-6">
-        <h1 className="text-2xl font-semibold text-gray-700 mb-4">File Explorer</h1>
+        <h1 className="text-2xl font-semibold text-gray-700 mb-4">
+          File Explorer
+        </h1>
 
         {/* Display Current Path */}
         <div className="text-gray-500 mb-6">
