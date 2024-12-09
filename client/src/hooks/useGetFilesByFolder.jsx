@@ -1,30 +1,52 @@
-import { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import { useState, useEffect } from "react";
+import { useContract } from "@/ContractContext/ContractContext";
 
-const useGetFilesByFolder = (contract, branchName, departmentName, folderName) => {
-    const [files, setFiles] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+const useGetFilesByFolder = ({ branch, department, folderName }) => {
+  const { state } = useContract();
+  const contract = state?.contract;
+  const [files, setFiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (!branchName || !departmentName || !folderName) return;
+  console.log("files :", files);
 
-        const fetchFiles = async () => {
-            try {
-                setLoading(true);
-                const result = await contract.getFilesByFolder(branchName, departmentName, folderName);
-                setFiles(result);
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
+  useEffect(() => {
+    const fetchFiles = async () => {
+      try {
+        const result = await contract.getFilesByFolder(
+          "CSE",
+          "Faculty_Records",
+          "test"
+        );
 
-        fetchFiles();
-    }, [branchName, departmentName, folderName, contract]);
+        console.log("result",result);
+        
 
-    return { files, loading, error };
+        // Mapping the result to the files array
+        const filesData = result.map((file) => ({
+          id: file?.id.toString(),
+          fileName: file?.fileName,
+          folderName: file?.folderName,
+          path: file?.path,
+          ipfsHash: file?.ipfsHash,
+          branch: file?.branch,
+          department: file?.department,
+          uploader: file?.uploader,
+          isPrivate: file?.isPrivate,
+        }));
+
+        setFiles(filesData);
+      } catch (err) {
+        setError(err.message || "Error fetching files");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchFiles();
+  }, [branch, department, folderName]);
+
+  return { files, loading, error };
 };
 
 export default useGetFilesByFolder;

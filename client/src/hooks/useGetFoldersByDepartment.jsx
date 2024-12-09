@@ -1,27 +1,29 @@
 import { useState, useEffect } from "react";
-import { ethers } from "ethers";
 import { useContract } from "@/ContractContext/ContractContext";
 
 const useGetFoldersByDepartment = (branchName, departmentName) => {
   const [folders, setFolders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { state } = useContract();
-  const contract = state.contract;
+  const contract = state?.contract;
 
   useEffect(() => {
-    if (!branchName || !departmentName) return;
+    // Check if inputs are valid
+    if (!branchName || !departmentName || !contract) {
+      setFolders([]);
+      return;
+    }
 
     const fetchFolders = async () => {
       try {
         setLoading(true);
-        const result = await contract.getFoldersByDepartment(
-          branchName,
-          departmentName
-        );
-        setFolders(result);
+        setError(null);
+        const result = await contract.getFoldersByDepartment(branchName, departmentName);
+        setFolders(result || []); // Ensure fallback to empty array
       } catch (err) {
         setError(err.message);
+        setFolders([]);
       } finally {
         setLoading(false);
       }

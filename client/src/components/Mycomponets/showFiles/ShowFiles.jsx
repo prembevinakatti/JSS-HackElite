@@ -54,7 +54,6 @@ const ShowFiles = () => {
   const folders = useGetFoldersByDepartment(branchName, department);
   console.log("folders", folders);
 
-  // const files = getFilesByFolder("CSE", department, folderName);
 
   // Open folder
   const openFolder = (folderName) => {

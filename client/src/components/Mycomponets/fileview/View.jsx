@@ -9,64 +9,113 @@ import {
 import { RiFolderShield2Fill, RiFileFill } from "react-icons/ri";
 import useGetAllBranches from "@/hooks/useGetAllBranchs";
 import useGetDepartmentsByBranch from "@/hooks/useGetDepartmentsByBranch";
+import useGetFoldersByDepartment from "@/hooks/useGetFoldersByDepartment";
+import useGetFilesByFolder from "@/hooks/useGetFilesByFolder";
 
 function View() {
   const [breadcrumbs, setBreadcrumbs] = useState(["Home"]);
   const [folders, setFolders] = useState([]);
-  const [files, setFiles] = useState([]);
-  const [selectedBranch, setSelectedBranch] = useState(null); // For dynamic branch selection
+  const [selectedBranch, setSelectedBranch] = useState(null);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
+  const [selectedFolder, setSelectedFolder] = useState(null);
 
-  const { branches, loading: branchesLoading, error: branchesError } = useGetAllBranches();
-  const { departments, loading: departmentsLoading, error: departmentsError } =
-    useGetDepartmentsByBranch(selectedBranch); // Fetch departments dynamically based on branch
+  const {
+    branches,
+    loading: branchesLoading,
+    error: branchesError,
+  } = useGetAllBranches();
+
+  const {
+    departments,
+    loading: departmentsLoading,
+    error: departmentsError,
+  } = useGetDepartmentsByBranch(selectedBranch);
+
+  const {
+    folders: departmentFolders,
+    loading: foldersLoading,
+    error: foldersError,
+  } = useGetFoldersByDepartment(selectedBranch, selectedDepartment);
+
+  const {
+    files,
+    loading: filesLoading,
+    error: filesError,
+  } = useGetFilesByFolder({
+    branch: selectedBranch,
+    department: selectedDepartment,
+    folderName: selectedFolder,
+  });
 
   useEffect(() => {
-    if (!branchesLoading && !branchesError) {
-      // Initial load for the "Home" view
+    if (branches) {
       setFolders(branches);
-      setFiles([]);
     }
-  }, [branches, branchesLoading, branchesError]);
+  }, [branches]);
 
   useEffect(() => {
-    // Update folders when departments are loaded for a selected branch
-    if (!departmentsLoading && selectedBranch) {
+    if (departments) {
       setFolders(departments);
-      setFiles([]); // No files at the branch level
     }
-  }, [departments, departmentsLoading, selectedBranch]);
+  }, [departments]);
 
-  async function retrieveData(folderName) {
-    // Check if the clicked folder is a branch
-    if (branches.includes(folderName)) {
-      setSelectedBranch(folderName); // Trigger fetching departments
-      return { folders: departments, files: [] }; // Use departments from the hook
+  useEffect(() => {
+    if (departmentFolders) {
+      setFolders(departmentFolders);
     }
-
-    // Placeholder for other folder types
-    return { folders: [], files: [] };
-  }
-
-  async function updateView(folderName) {
-    const data = await retrieveData(folderName);
-    setFolders(data.folders);
-    setFiles(data.files);
-  }
+  }, [departmentFolders]);
 
   function handleFolderClick(folderName) {
-    const newBreadcrumbs = [...breadcrumbs, folderName];
-    setBreadcrumbs(newBreadcrumbs);
-    updateView(folderName);
+    if (branches.includes(folderName)) {
+      setSelectedBranch(folderName);
+      setSelectedDepartment(null);
+      setSelectedFolder(null);
+      setBreadcrumbs(["Home", folderName]);
+    } else if (departments?.includes(folderName)) {
+      setSelectedDepartment(folderName);
+      setSelectedFolder(null);
+      setBreadcrumbs(["Home", selectedBranch, folderName]);
+    } else if (departmentFolders?.includes(folderName)) {
+      setSelectedFolder(folderName);
+      setBreadcrumbs([
+        "Home",
+        selectedBranch,
+        selectedDepartment,
+        folderName,
+      ]);
+    }
   }
 
   function handleBreadcrumbClick(index) {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
     setBreadcrumbs(newBreadcrumbs);
-    updateView(newBreadcrumbs[newBreadcrumbs.length - 1]);
+
+    if (index === 0) {
+      setSelectedBranch(null);
+      setSelectedDepartment(null);
+      setSelectedFolder(null);
+      setFolders(branches);
+    } else if (index === 1) {
+      setSelectedDepartment(null);
+      setSelectedFolder(null);
+      setFolders(departments);
+    } else if (index === 2) {
+      setSelectedFolder(null);
+      setFolders(departmentFolders);
+    }
   }
 
-  if (branchesLoading || departmentsLoading) return <p>Loading...</p>;
-  if (branchesError || departmentsError) return <p>Error: {branchesError || departmentsError}</p>;
+  if (branchesLoading || departmentsLoading || foldersLoading || filesLoading) {
+    return <p>Loading...</p>;
+  }
+
+  if (branchesError || departmentsError || foldersError || filesError) {
+    return (
+      <p>
+        Error: {branchesError || departmentsError || foldersError || filesError}
+      </p>
+    );
+  }
 
   return (
     <div className="min-h-screen p-10">
@@ -94,9 +143,9 @@ function View() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        {/* Folders and Files */}
+        {/* Folders */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {folders.map((folder, index) => (
+          {folders?.map((folder, index) => (
             <div
               key={index}
               onClick={() => handleFolderClick(folder)}
@@ -108,24 +157,35 @@ function View() {
               </span>
             </div>
           ))}
-
-          {files.map((file, index) => (
-            <div
-              key={index}
-              className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-800 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
-            >
-              <RiFileFill size={60} className="text-blue-500 mb-2" />
-              <a
-                href={`#`} // Replace with actual file URL
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 font-medium truncate text-center"
-              >
-                {file}
-              </a>
-            </div>
-          ))}
         </div>
+
+        {/* Files in Selected Folder */}
+        {selectedFolder && (
+          <div className="mt-6">
+            <h2 className="text-xl font-bold">Files in {selectedFolder}</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
+              {files?.map((file, index) => (
+                <div
+                  key={index}
+                  className="bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-800 rounded-lg p-4 flex flex-col items-center hover:shadow-lg transition"
+                >
+                  <RiFileFill size={60} className="text-blue-500 mb-2" />
+                  <a
+                    href={file?.path || "#"} // Replace with actual file URL
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 dark:text-blue-400 font-medium truncate text-center"
+                  >
+                    {file?.fileName}
+                  </a>
+                  <p className="text-gray-600 dark:text-gray-400 text-xs mt-2">
+                    Uploaded by: {file?.uploader}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
