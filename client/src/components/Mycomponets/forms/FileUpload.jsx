@@ -310,10 +310,11 @@ const FileUpload = ({ onUploadComplete }) => {
           />
         ) : (
           <Input
+            disabled
             id="fileName"
             value={fileNames[0] || ""} // Display the first file name for single upload
             readOnly
-            placeholder="Enter File Name ( Or Ignore If Uploading Bulk Files )"
+            placeholder="Automatically Takes File Names From Uploaded Files"
           />
         )}
       </div>
