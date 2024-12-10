@@ -93,16 +93,29 @@ function Navbar() {
                     create accounts
                   </div>
                   <Separator className="my-3" />
+                
+                  <div className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white">
+                    Request
+                  </div>
+                  
+                  <Separator className="my-3" />
+                  <Separator className="my-3" />
+                
+                  <div className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white" onClick={()=>navigate("/assignpanel")}>
+                  assignpanel
+                  </div>
+
+                  <Separator className="my-3" />
                   <div
                     className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
                     onClick={() => handleNavigation("/connectmetamask")}
                   >
-                    test
+                    Connect to metamask
                   </div>
                   <Separator className="my-3" />
                   {isLogined && (
                     <div
-                      className="cursor-pointer text-slate-800 hover:text-black dark:text-slate-300 dark:hover:text-white"
+                      className="cursor-pointer text-slate-800 hover:text-red-800 dark:hover:text-red-500 dark:text-red-200"
                       onClick={handleLogout}
                     >
                       Logout
@@ -125,12 +138,10 @@ function Navbar() {
 
           {isLogined ? (
             <div>
-              <Button variant="destructive" onClick={handleLogout}>
-                Logout
-              </Button>
-              <div>
+             
+              <div className="flex gap-2 border-1 drop-shadow-md ">
                 {isLogined?.role}
-                {isLogined?.role == "Head" ? <RiAdminLine /> : <FaUserCheck />}
+                {isLogined?.role == "Head" ? <RiAdminLine className="mt-1" /> : <FaUserCheck className="mt-1" />}
               </div>
             </div>
           ) : (

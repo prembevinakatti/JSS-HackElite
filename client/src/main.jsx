@@ -19,6 +19,7 @@ import FileUpload from "./components/Mycomponets/forms/FileUpload";
 import { ContractProvider } from "./ContractContext/ContractContext";
 import { PersistGate } from "redux-persist/integration/react";
 import View from "./components/Mycomponets/fileview/View";
+import AdminHeadPanel from "./components/Mycomponets/forms/AdminHeadPanel";
 const router = createBrowserRouter(
   createRoutesFromElements(
     <>
@@ -30,6 +31,7 @@ const router = createBrowserRouter(
         <Route path="/createuser" element={<CreateForm />} />
         <Route path="/uploadfiles" element={<FileUpload />} />
         <Route path="/view" element={<View/>}/>
+        <Route path="/assignpanel" element={<AdminHeadPanel/>}/>
       </Route>
     </>
   )

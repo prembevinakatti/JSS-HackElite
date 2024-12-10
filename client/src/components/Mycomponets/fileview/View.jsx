@@ -25,7 +25,9 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
+import { LuFileLock2 } from "react-icons/lu";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Card, CardHeader, CardContent } from "@/components/ui/card";
 function View() {
   const [breadcrumbs, setBreadcrumbs] = useState(["Home"]);
   const [folders, setFolders] = useState([]);
@@ -34,29 +36,37 @@ function View() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fetchFiles, setFetchFiles] = useState(false);
-
+  const [uploadmodel,setuploadmodel]=useState(false)
+  const [uploadMode, setUploadMode] = useState("single"); // 'single' or 'bulk'
+  const [singleFile, setSingleFile] = useState(null);
+  const [bulkFiles, setBulkFiles] = useState([]);
+  const [isPrivate, setIsPrivate] = useState(true); // Changed to isPrivate
+  const [fileNames, setFileName] = useState([]); // Initialize as an array
+  const [loading,setloading]=useState()
   const handleKnowMoreClick = (file) => {
     setSelectedFile(file);
   };
-
+  const hangleuploadmodel=()=>{
+    setuploadmodel(true)
+  }
   const {
     branches,
     loading: branchesLoading,
     error: branchesError,
   } = useGetAllBranches();
-
+  
   const {
     departments,
     loading: departmentsLoading,
     error: departmentsError,
   } = useGetDepartmentsByBranch(selectedBranch);
-
+  
   const {
     folders: departmentFolders,
     loading: foldersLoading,
     error: foldersError,
   } = useGetFoldersByDepartment(selectedBranch, selectedDepartment);
-
+  
   const {
     files,
     loading: filesLoading,
@@ -66,31 +76,31 @@ function View() {
     department: selectedDepartment,
     folderName: selectedFolder,
   });
-
+  
   useEffect(() => {
     if (branches) {
       setFolders(branches);
     }
   }, [branches]);
-
+  
   useEffect(() => {
     if (departments) {
       setFolders(departments);
     }
   }, [departments]);
-
+  
   useEffect(() => {
     if (departmentFolders) {
       setFolders(departmentFolders);
     }
   }, [departmentFolders]);
-
+  
   useEffect(() => {
     if (selectedFolder) {
       setFetchFiles(true); // Trigger file fetch only when a folder is selected
     }
   }, [selectedFolder]);
-
+  
   function handleFolderClick(folderName) {
     if (branches.includes(folderName)) {
       setSelectedBranch(folderName);
@@ -108,11 +118,11 @@ function View() {
       setBreadcrumbs(["Home", selectedBranch, selectedDepartment, folderName]);
     }
   }
-
+  
   function handleBreadcrumbClick(index) {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
     setBreadcrumbs(newBreadcrumbs);
-
+    
     if (index === 0) {
       setSelectedBranch(null);
       setSelectedDepartment(null);
@@ -130,11 +140,33 @@ function View() {
       setFetchFiles(false); // Reset lazy load flag
     }
   }
+  console.log(files)
+  
+  const handleSingleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+
+    setSingleFile(selectedFile);
+    setFileName([selectedFile.name.split(".")[0]]); // Store single file name in an array
+  };  const handleBulkFilesChange = (e) => {
+    const files = Array.from(e.target.files);
+    setBulkFiles(files);
+
+    // Extract and store file names in an array
+    const fileNamesArray = files.map((file) => file.name.split(".")[0]); // Store names without extensions
+    setFileName(fileNamesArray); // Update fileName as an array
+  };
+  const handleuploadmodel=()=>{
+    setuploadmodel(true);
+  }
+  const handleUploadToIPFS = () => {
+    
+  };
 
   if (branchesLoading || departmentsLoading || foldersLoading || filesLoading) {
     return <p>Loading...</p>;
   }
-
+  
   if (branchesError || departmentsError || foldersError || filesError) {
     return (
       <p>
@@ -143,7 +175,7 @@ function View() {
     );
   }
   return (
-    <div className="min-h-screen  p-3">
+<div className="min-h-screen p-3">
       <div className="max-w-5xl mx-auto drop-shadow-2xl rounded-lg p-1 shadow-lg">
         <h1 className="text-2xl font-bold mb-6">Blockchain File Explorer</h1>
 
@@ -189,15 +221,25 @@ function View() {
         {selectedFolder && (
           <div>
             <h1 className="text-2xl mt-3 w-full text-center underline">
-              All Files Of {selectedDepartment}
+              All Files Of {selectedFolder}
             </h1>
+            <div
+              className="bg-primary rounded-full p-2 text-center text-white cursor-pointer w-8 mx-auto mt-3"
+              onClick={handleuploadmodel}
+            >
+              +
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
               {files?.map((file, index) => (
                 <div
                   key={index}
                   className="border rounded-lg p-4 flex flex-col items-center hover:shadow-lg transform transition duration-200 ease-in-out hover:scale-105"
                 >
-                  <FaRegFileLines size={60} className="mb-2 text-blue-500" />
+                  {file.isPrivate ? (
+                    <LuFileLock2 size={60} className="mb-2 text-red-500" />
+                  ) : (
+                    <FaRegFileLines size={60} className="mb-2 text-blue-500" />
+                  )}
                   <a
                     href={file?.path || "#"}
                     target="_blank"
@@ -206,22 +248,30 @@ function View() {
                   >
                     {file?.fileName}
                   </a>
-                  <p className="text-xs mt-2">
-                    <Button className="rounded px-3 py-1 hover:bg-blue-600 transition">
-                      View file
+                  <div>
+                    <Button>
+                      view
                     </Button>
-                  </p>
+                    <Button variet={"destructive"}>
+                        delect
+                    </Button>
+                  </div>
                   <p
                     className="underline ml-2 mt-3 cursor-pointer"
                     onClick={() => handleKnowMoreClick(file)}
                   >
                     Know more
                   </p>
+                </div>
+                
+              ))}
 
-                  {/* Dialog for file details */}
-                  {selectedFile && (
+            </div>
+          </div>
+        )}
+           {selectedFile && (
                     <Dialog
-                      open={selectedFile === file}
+                      open={selectedFile}
                       onOpenChange={() => setSelectedFile(null)}
                     >
                       <DialogTrigger asChild>
@@ -233,7 +283,7 @@ function View() {
                         <DialogHeader>
                           <DialogTitle>File Details</DialogTitle>
                           <DialogDescription>
-                            Here are the details for the file "{file?.fileName}
+                            Here are the details for the file "{selectedFile?.fileName}
                             ".
                           </DialogDescription>
                         </DialogHeader>
@@ -244,7 +294,7 @@ function View() {
                             </Label>
                             <Input
                               id="fileName"
-                              defaultValue={file?.fileName}
+                              defaultValue={selectedFile?.fileName}
                               className="col-span-3"
                               readOnly
                             />
@@ -255,7 +305,7 @@ function View() {
                             </Label>
                             <Input
                               id="branch"
-                              defaultValue={file?.branch}
+                              defaultValue={selectedFile?.branch}
                               className="col-span-3"
                               readOnly
                             />
@@ -266,7 +316,7 @@ function View() {
                             </Label>
                             <Input
                               id="department"
-                              defaultValue={file?.department}
+                              defaultValue={selectedFile?.department}
                               className="col-span-3"
                               readOnly
                             />
@@ -277,7 +327,7 @@ function View() {
                             </Label>
                             <Input
                               id="uploader"
-                              defaultValue={file?.uploader}
+                              defaultValue={selectedFile?.uploader}
                               className="col-span-3"
                               readOnly
                             />
@@ -288,7 +338,7 @@ function View() {
                             </Label>
                             <Input
                               id="ipfsHash"
-                              defaultValue={file?.ipfsHash}
+                              defaultValue={selectedFile?.ipfsHash}
                               className="col-span-3"
                               readOnly
                             />
@@ -305,11 +355,120 @@ function View() {
                       </DialogContent>
                     </Dialog>
                   )}
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Upload Dialog */}
+        {uploadmodel && (
+          <Dialog open={uploadmodel} onOpenChange={() => setuploadmodel(false)}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="hidden">
+                Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Upload Files</DialogTitle>
+                <DialogDescription>
+                  <Input disabled={true} value={breadcrumbs.join(" > ")} />
+                  <div>
+                    <Label>Access Type</Label>
+                    <RadioGroup
+                      value={isPrivate ? "private" : "public"}
+                      onValueChange={(value) =>
+                        setIsPrivate(value === "private")
+                      }
+                    >
+                      <div className="flex items-center space-x-4">
+                        <RadioGroupItem value="public" id="public" />
+                        <Label htmlFor="public">Public</Label>
+                        <RadioGroupItem value="private" id="private" />
+                        <Label htmlFor="private">Private</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+              <div className="mb-4 flex justify-center gap-4">
+                <Button
+                  variant={uploadMode === "single" ? "secondary" : "primary"}
+                  onClick={() => setUploadMode("single")}
+                >
+                  Single Upload
+                </Button>
+                <Button
+                  variant={uploadMode === "bulk" ? "secondary" : "primary"}
+                  onClick={() => setUploadMode("bulk")}
+                >
+                  Bulk Upload
+                </Button>
+              </div>
+              {uploadMode === "single" && (
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-lg font-semibold">Single File Upload</h2>
+                  </CardHeader>
+                  <CardContent>
+                    <input
+                      type="file"
+                      onChange={handleSingleFileChange}
+                      accept="image/*,application/pdf"
+                    />
+                    {singleFile && (
+                      <div className="mt-2">
+                        {singleFile.type.includes("pdf") ? (
+                          <AiOutlineFilePdf size={25} />
+                        ) : (
+                          <FaFileImage size={25} />
+                        )}
+                        <span>{singleFile.name}</span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {uploadMode === "bulk" && (
+                <Card>
+                  <CardHeader>
+                    <h2 className="text-lg font-semibold">Bulk File Upload</h2>
+                  </CardHeader>
+                  <CardContent>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleBulkFilesChange}
+                      accept="image/*,application/pdf"
+                    />
+                    {bulkFiles.length > 0 && (
+                      <div className="mt-2">
+                        {bulkFiles.map((file, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            {file.type.includes("pdf") ? (
+                              <AiOutlineFilePdf size={25} />
+                            ) : (
+                              <FaFileImage size={25} />
+                            )}
+                            <span>{file.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <DialogFooter>
+                <Button
+                  onClick={handleUploadToIPFS}
+                  disabled={loading}
+                  variant="primary"
+                  className="w-full"
+                >
+                  {loading ? "Uploading..." : "Upload to IPFS"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         )}
+      
       </div>
     </div>
   );
