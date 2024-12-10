@@ -12,8 +12,10 @@ import useGetDepartmentsByBranch from "@/hooks/useGetDepartmentsByBranch";
 import useGetFoldersByDepartment from "@/hooks/useGetFoldersByDepartment";
 import useGetFilesByFolder from "@/hooks/useGetFilesByFolder";
 import { Button } from "@/components/ui/button";
-import { RiFileFill } from "react-icons/ri";
+import { FaFileImage } from "react-icons/fa";
 import { FaRegFileLines } from "react-icons/fa6";
+import axios from "axios";
+import { AiOutlineFilePdf } from "react-icons/ai";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { LuFileLock2 } from "react-icons/lu";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
+import { useContract } from "@/ContractContext/ContractContext";
 function View() {
   const [breadcrumbs, setBreadcrumbs] = useState(["Home"]);
   const [folders, setFolders] = useState([]);
@@ -36,37 +39,40 @@ function View() {
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fetchFiles, setFetchFiles] = useState(false);
-  const [uploadmodel,setuploadmodel]=useState(false)
+  const [uploadmodel, setuploadmodel] = useState(false);
   const [uploadMode, setUploadMode] = useState("single"); // 'single' or 'bulk'
   const [singleFile, setSingleFile] = useState(null);
   const [bulkFiles, setBulkFiles] = useState([]);
   const [isPrivate, setIsPrivate] = useState(true); // Changed to isPrivate
   const [fileNames, setFileName] = useState([]); // Initialize as an array
-  const [loading,setloading]=useState()
+  const [isDeleting, setIsDeleting] = useState(false); // Track file deletion state
+  const [loading, setloading] = useState();
+  const { state } = useContract();
+  const contract = state.contract;
   const handleKnowMoreClick = (file) => {
     setSelectedFile(file);
   };
-  const hangleuploadmodel=()=>{
-    setuploadmodel(true)
-  }
+  const hangleuploadmodel = () => {
+    setuploadmodel(true);
+  };
   const {
     branches,
     loading: branchesLoading,
     error: branchesError,
   } = useGetAllBranches();
-  
+
   const {
     departments,
     loading: departmentsLoading,
     error: departmentsError,
   } = useGetDepartmentsByBranch(selectedBranch);
-  
+
   const {
     folders: departmentFolders,
     loading: foldersLoading,
     error: foldersError,
   } = useGetFoldersByDepartment(selectedBranch, selectedDepartment);
-  
+
   const {
     files,
     loading: filesLoading,
@@ -76,31 +82,31 @@ function View() {
     department: selectedDepartment,
     folderName: selectedFolder,
   });
-  
+
   useEffect(() => {
     if (branches) {
       setFolders(branches);
     }
   }, [branches]);
-  
+
   useEffect(() => {
     if (departments) {
       setFolders(departments);
     }
   }, [departments]);
-  
+
   useEffect(() => {
     if (departmentFolders) {
       setFolders(departmentFolders);
     }
   }, [departmentFolders]);
-  
+
   useEffect(() => {
     if (selectedFolder) {
       setFetchFiles(true); // Trigger file fetch only when a folder is selected
     }
   }, [selectedFolder]);
-  
+
   function handleFolderClick(folderName) {
     if (branches.includes(folderName)) {
       setSelectedBranch(folderName);
@@ -118,11 +124,11 @@ function View() {
       setBreadcrumbs(["Home", selectedBranch, selectedDepartment, folderName]);
     }
   }
-  
+
   function handleBreadcrumbClick(index) {
     const newBreadcrumbs = breadcrumbs.slice(0, index + 1);
     setBreadcrumbs(newBreadcrumbs);
-    
+
     if (index === 0) {
       setSelectedBranch(null);
       setSelectedDepartment(null);
@@ -140,15 +146,16 @@ function View() {
       setFetchFiles(false); // Reset lazy load flag
     }
   }
-  console.log(files)
-  
+  console.log(files);
+
   const handleSingleFileChange = (e) => {
     const selectedFile = e.target.files[0];
     if (!selectedFile) return;
 
     setSingleFile(selectedFile);
     setFileName([selectedFile.name.split(".")[0]]); // Store single file name in an array
-  };  const handleBulkFilesChange = (e) => {
+  };
+  const handleBulkFilesChange = (e) => {
     const files = Array.from(e.target.files);
     setBulkFiles(files);
 
@@ -156,17 +163,116 @@ function View() {
     const fileNamesArray = files.map((file) => file.name.split(".")[0]); // Store names without extensions
     setFileName(fileNamesArray); // Update fileName as an array
   };
-  const handleuploadmodel=()=>{
+  const handleuploadmodel = () => {
     setuploadmodel(true);
-  }
-  const handleUploadToIPFS = () => {
-    
+  };
+
+  const PINATA_API_KEY = import.meta.env.VITE_PINATA_API_KEY; // Store your Pinata API key in .env
+  const PINATA_API_SECRET = import.meta.env.VITE_PINATA_SECRET_API_KEY;
+
+  const handleUploadToIPFS = async () => {
+    console.log("Upload to IPFS initiated.");
+    console.log("Upload mode:", uploadMode);
+    console.log(
+      "Files to upload:",
+      uploadMode === "single" ? singleFile : bulkFiles
+    );
+
+    setloading(true); // Set loading state during the upload process
+
+    const filesToUpload =
+      uploadMode === "single" && singleFile
+        ? [singleFile]
+        : uploadMode === "bulk" && bulkFiles.length > 0
+        ? bulkFiles
+        : [];
+
+    if (filesToUpload.length === 0) {
+      console.error("No files selected for upload.");
+      setloading(false);
+      return;
+    }
+
+    try {
+      const ipfsHashes = [];
+      const fileNames = []; // Array to store file names
+
+      for (const file of filesToUpload) {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        // Optionally, add metadata to the file
+        const metadata = JSON.stringify({
+          name: file.name,
+          keyvalues: {
+            branch: selectedBranch,
+            department: selectedDepartment,
+          },
+        });
+        formData.append("pinataMetadata", metadata);
+
+        // Add Pinata options (optional)
+        const options = JSON.stringify({
+          cidVersion: 1,
+        });
+        formData.append("pinataOptions", options);
+
+        const response = await axios.post(
+          "https://api.pinata.cloud/pinning/pinFileToIPFS",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+              pinata_api_key: PINATA_API_KEY,
+              pinata_secret_api_key: PINATA_API_SECRET,
+            },
+          }
+        );
+
+        console.log("File uploaded:", response.data);
+        ipfsHashes.push(response.data.IpfsHash); // Save the hash
+        fileNames.push(file.name); // Save the file name
+      }
+
+      // console.log("ipfsHashes:", ipfsHashes);
+      // console.log("File Names:", fileNames); // Log the file names
+      // console.log("Branch:", selectedBranch);
+      // console.log("Department:", selectedDepartment);
+      // console.log("Folder:", selectedFolder);
+      // console.log(
+      //   `Path: ${selectedBranch}/${selectedDepartment}/${selectedFolder}`
+      // );
+      // console.log("isPrivate:", isPrivate);
+
+      const path = `${selectedBranch}/${selectedDepartment}/${selectedFolder}`;
+
+      const result = await contract.uploadFiles(
+        fileNames,
+        selectedFolder,
+        path,
+        ipfsHashes,
+        selectedBranch,
+        selectedDepartment,
+        isPrivate
+      );
+
+      setloading(false);
+      setuploadmodel(false);
+      setSingleFile(null); // Reset single file state
+      setBulkFiles([]); // Reset bulk files state
+      setFileName([]); // Clear file names
+
+      return { ipfsHashes, fileNames }; // Return the array of ipfsHashes and file names
+    } catch (error) {
+      console.error("Error uploading files to IPFS:", error);
+      setloading(false);
+    }
   };
 
   if (branchesLoading || departmentsLoading || foldersLoading || filesLoading) {
     return <p>Loading...</p>;
   }
-  
+
   if (branchesError || departmentsError || foldersError || filesError) {
     return (
       <p>
@@ -174,8 +280,22 @@ function View() {
       </p>
     );
   }
+
+  const handleDeleteFile = async (file) => {
+    try {
+      setIsDeleting(true); // Start the loader
+      console.log("File: ", file);
+      const response = await contract.deleteFile(file);
+      console.log("File deleted: ", response);
+    } catch (error) {
+      console.log("Error deleting file in client: ", error.message);
+    } finally {
+      setIsDeleting(false); // Stop the loader
+    }
+  };
+
   return (
-<div className="min-h-screen p-3">
+    <div className="min-h-screen p-3">
       <div className="max-w-5xl mx-auto drop-shadow-2xl rounded-lg p-1 shadow-lg">
         <h1 className="text-2xl font-bold mb-6">Blockchain File Explorer</h1>
 
@@ -224,10 +344,10 @@ function View() {
               All Files Of {selectedFolder}
             </h1>
             <div
-              className="bg-primary rounded-full p-2 text-center text-white cursor-pointer w-8 mx-auto mt-3"
+              className="bg-primary rounded-full p-2 text-center text-white cursor-pointer w-fit mx-auto mt-3"
               onClick={handleuploadmodel}
             >
-              +
+              Add File
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6 mt-4">
               {files?.map((file, index) => (
@@ -248,12 +368,14 @@ function View() {
                   >
                     {file?.fileName}
                   </a>
-                  <div>
-                    <Button>
-                      view
-                    </Button>
-                    <Button variet={"destructive"}>
-                        delect
+                  <div className="flex gap-2">
+                    <Button>View</Button>
+                    <Button
+                      onClick={() => handleDeleteFile(file?.id)}
+                      variant={"destructive"}
+                      disabled={isDeleting} // Disable while deleting
+                    >
+                      {isDeleting ? "Deleting..." : "Delete"}
                     </Button>
                   </div>
                   <p
@@ -263,98 +385,93 @@ function View() {
                     Know more
                   </p>
                 </div>
-                
               ))}
-
             </div>
           </div>
         )}
-           {selectedFile && (
-                    <Dialog
-                      open={selectedFile}
-                      onOpenChange={() => setSelectedFile(null)}
-                    >
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="hidden">
-                          Edit Profile
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-[425px]">
-                        <DialogHeader>
-                          <DialogTitle>File Details</DialogTitle>
-                          <DialogDescription>
-                            Here are the details for the file "{selectedFile?.fileName}
-                            ".
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="fileName" className="text-right">
-                              File Name
-                            </Label>
-                            <Input
-                              id="fileName"
-                              defaultValue={selectedFile?.fileName}
-                              className="col-span-3"
-                              readOnly
-                            />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="branch" className="text-right">
-                              Branch
-                            </Label>
-                            <Input
-                              id="branch"
-                              defaultValue={selectedFile?.branch}
-                              className="col-span-3"
-                              readOnly
-                            />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="department" className="text-right">
-                              Department
-                            </Label>
-                            <Input
-                              id="department"
-                              defaultValue={selectedFile?.department}
-                              className="col-span-3"
-                              readOnly
-                            />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="uploader" className="text-right">
-                              Uploader
-                            </Label>
-                            <Input
-                              id="uploader"
-                              defaultValue={selectedFile?.uploader}
-                              className="col-span-3"
-                              readOnly
-                            />
-                          </div>
-                          <div className="grid grid-cols-4 items-center gap-4">
-                            <Label htmlFor="ipfsHash" className="text-right">
-                              IPFS Hash
-                            </Label>
-                            <Input
-                              id="ipfsHash"
-                              defaultValue={selectedFile?.ipfsHash}
-                              className="col-span-3"
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button
-                            type="button"
-                            onClick={() => setSelectedFile(null)}
-                          >
-                            Close
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-                  )}
+        {selectedFile && (
+          <Dialog
+            open={selectedFile}
+            onOpenChange={() => setSelectedFile(null)}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" className="hidden">
+                Edit Profile
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>File Details</DialogTitle>
+                <DialogDescription>
+                  Here are the details for the file "{selectedFile?.fileName}
+                  ".
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="fileName" className="text-right">
+                    File Name
+                  </Label>
+                  <Input
+                    id="fileName"
+                    defaultValue={selectedFile?.fileName}
+                    className="col-span-3"
+                    readOnly
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="branch" className="text-right">
+                    Branch
+                  </Label>
+                  <Input
+                    id="branch"
+                    defaultValue={selectedFile?.branch}
+                    className="col-span-3"
+                    readOnly
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="department" className="text-right">
+                    Department
+                  </Label>
+                  <Input
+                    id="department"
+                    defaultValue={selectedFile?.department}
+                    className="col-span-3"
+                    readOnly
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="uploader" className="text-right">
+                    Uploader
+                  </Label>
+                  <Input
+                    id="uploader"
+                    defaultValue={selectedFile?.uploader}
+                    className="col-span-3"
+                    readOnly
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="ipfsHash" className="text-right">
+                    IPFS Hash
+                  </Label>
+                  <Input
+                    id="ipfsHash"
+                    defaultValue={selectedFile?.ipfsHash}
+                    className="col-span-3"
+                    readOnly
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" onClick={() => setSelectedFile(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
         {/* Upload Dialog */}
         {uploadmodel && (
           <Dialog open={uploadmodel} onOpenChange={() => setuploadmodel(false)}>
@@ -403,7 +520,9 @@ function View() {
               {uploadMode === "single" && (
                 <Card>
                   <CardHeader>
-                    <h2 className="text-lg font-semibold">Single File Upload</h2>
+                    <h2 className="text-lg font-semibold">
+                      Single File Upload
+                    </h2>
                   </CardHeader>
                   <CardContent>
                     <input
@@ -468,7 +587,6 @@ function View() {
             </DialogContent>
           </Dialog>
         )}
-      
       </div>
     </div>
   );
