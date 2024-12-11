@@ -17,6 +17,7 @@ export const ContractProvider = ({ children }) => {
 
   useEffect(() => {
     const getWalletAddress = async () => {
+      
       if (window.ethereum) {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.listAccounts();
